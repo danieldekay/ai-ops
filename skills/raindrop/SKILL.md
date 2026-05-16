@@ -1,13 +1,39 @@
 ---
 name: raindrop
-description: "Store and retrieve bookmarks in Raindrop.io using the local MCP server. Use when saving research sources, PDFs, articles, or any URL encountered during work. Also use when searching or browsing existing bookmarks by tag, text, or collection."
+description: "Store and retrieve bookmarks in Raindrop.io using the Raindrop MCP server. Use when saving research sources, PDFs, articles, or any URL encountered during work. Also use when searching or browsing existing bookmarks by tag, text, or collection."
 ---
 
 # Raindrop Bookmarking Skill
 
 ## Overview
 
-Use the local `raindrop/*` MCP tools to save, tag, and retrieve bookmarks in the user's Raindrop.io account. Every useful URL discovered during research, every PDF downloaded, and every tool or documentation page referenced should be bookmarked with structured metadata.
+Use the `raindrop/*` MCP tools to save, tag, and retrieve bookmarks in the user's Raindrop.io account. Every useful URL discovered during research, every PDF downloaded, and every tool or documentation page referenced should be bookmarked with structured metadata.
+
+## MCP Setup
+
+The Raindrop MCP is an **official hosted HTTP server** provided by Raindrop.io. It requires a **Raindrop Pro** account.
+
+**Endpoint:** `https://api.raindrop.io/rest/v2/ai/mcp`
+**Transport:** Streamable HTTP
+**Docs:** <https://developer.raindrop.io/mcp/mcp>
+**Client setup guide (Claude, VS Code, Cursor, ChatGPT):** <https://help.raindrop.io/mcp>
+
+### Configuring in VS Code (mcp.json)
+
+```json
+{
+  "servers": {
+    "raindrop": {
+      "type": "http",
+      "url": "https://api.raindrop.io/rest/v2/ai/mcp"
+    }
+  }
+}
+```
+
+Authentication is handled via **OAuth 2.1** (browser prompt on first use) or a **Bearer token** from the Raindrop.io REST API.
+
+> If the `mcp_raindrop_*` tools are not available, direct the user to the setup guide at <https://help.raindrop.io/mcp>.
 
 ## MCP Tools Available
 
@@ -24,27 +50,60 @@ Use the local `raindrop/*` MCP tools to save, tag, and retrieve bookmarks in the
 | `mcp_raindrop_analyze_research_links` | Analyze files for link patterns — use before bulk-saving |
 | `mcp_raindrop_delete_bookmark` | Remove a bookmark by ID |
 
-## Collections Reference
+## Collections Configuration
 
-Use `collection_id` to file bookmarks into the right folder:
+Collection IDs are personal and differ per account. This skill uses a local config file so the collections reference is not hardcoded here.
 
-| ID | Name | Use for |
-|----|------|---------|
-| `40439354` | GenAI | AI tools, prompts, model docs, MCP servers |
-| `41549186` | Technology & Coding | Dev tools, libraries, APIs, architecture |
-| `40382707` | Tango | Argentine tango — culture, music, community, events |
-| `42699482` | Writing | Writing craft, editorial, style, blogging |
-| `40472140` | Import | Unreviewed / inbox — use when unsure |
-| `40347642` | FreeWeb | Open web, decentralisation, digital sovereignty |
-| `43275086` | Home | Home & living |
-| `40752578` | Photography | Photography, visual arts |
-| `42531296` | Health | Health & wellness |
-| `42371686` | Cooking | Food & recipes |
-| `47359880` | Work | Work-related, productivity |
-| `47359882` | Me | Personal, self-development |
-| `43083400` | Astro | Astronomy, astrophysics |
+### Config file location
 
-> For research sessions: prefer the most specific collection. Unsorted (`collection_id` omitted or `-1`) lands in "All Bookmarks".
+```
+~/.config/raindrop-skill/collections.json
+```
+
+### First use — create the config
+
+On first use (or when `collection_id` is needed), check whether the config exists:
+
+```bash
+ls ~/.config/raindrop-skill/collections.json
+```
+
+If missing, **create it** by:
+
+1. Fetching the user's collections via `mcp_raindrop_list_bookmarks` or by calling the Raindrop REST API:
+
+   ```
+   GET https://api.raindrop.io/rest/v1/collections
+   Authorization: Bearer <token>
+   ```
+
+2. Writing the result to `~/.config/raindrop-skill/collections.json` in this format:
+
+```json
+{
+  "_schema": "raindrop-skill-collections-v1",
+  "_instructions": "Map human-readable names to Raindrop collection IDs. Add 'description' to help the agent pick the right collection.",
+  "collections": [
+    {
+      "id": 0,
+      "name": "Unsorted",
+      "description": "Default inbox — use when no better collection fits"
+    }
+  ]
+}
+```
+
+1. Ask the user to review and enrich the file with `description` fields so the agent can pick the right collection automatically.
+
+### Using the config
+
+When a `collection_id` is needed:
+
+1. Read `~/.config/raindrop-skill/collections.json`.
+2. Match the content domain/topic to the best collection by `description`.
+3. Fall back to the `Unsorted` collection (id `0` or omit `collection_id`) if no match is found.
+
+> For research sessions: prefer the most specific collection. Omitting `collection_id` lands the bookmark in "All Bookmarks".
 
 ## Standard Excerpt Format
 
@@ -69,18 +128,22 @@ Always write excerpts in this structured format so they are searchable and self-
 Apply tags from multiple levels — always at least one from each applicable level:
 
 ### Level 1 — Domain (pick one)
+
 `research` · `tools` · `tango` · `writing` · `tech` · `home` · `health` · `work` · `personal`
 
 ### Level 2 — Content Type
+
 `methodology` · `tutorial` · `reference` · `paper` · `pdf` · `video` · `thread` · `tool` · `api` · `mcp` · `book`
 
 ### Level 3 — Processing State
+
 `inbox` — not yet read
 `lit-review` — being processed via AIC
 `aic-processed` — AIC note created, ZK link in excerpt
 `tier-1` through `tier-4` — deep-research tier classification
 
 ### Level 4 — Topic Tags
+
 Free-form, specific: `pacheco-vega` · `fastmcp` · `zettelkasten` · `clean-architecture` · `raindrop` · `limesurvey` · etc.
 
 ## Workflows
@@ -88,14 +151,15 @@ Free-form, specific: `pacheco-vega` · `fastmcp` · `zettelkasten` · `clean-arc
 ### Save a source during research
 
 ```
-1. mcp_raindrop_create_bookmark(
+1. Read ~/.config/raindrop-skill/collections.json → pick best collection_id
+2. mcp_raindrop_create_bookmark(
        url=<url>,
        title=<title>,
        excerpt="[domain][type] YYYY-MM-DD | <summary>. Session: <path>",
        tags=["research", "inbox", "<topic>"],
-       collection_id=<id>   # pick from collections table above
+       collection_id=<id from config>
    )
-2. After AIC note created → mcp_raindrop_update_bookmark(
+3. After AIC note created → mcp_raindrop_update_bookmark(
        bookmark_id=<id>,
        excerpt="... ZK: [[note-id]]. AIC: complete.",
        tags=[..., "aic-processed"]   # replace "inbox" with "aic-processed"
@@ -105,12 +169,13 @@ Free-form, specific: `pacheco-vega` · `fastmcp` · `zettelkasten` · `clean-arc
 ### Save a downloaded PDF
 
 ```
-1. mcp_raindrop_create_bookmark(
+1. Read ~/.config/raindrop-skill/collections.json → pick best collection_id
+2. mcp_raindrop_create_bookmark(
        url=<original-pdf-url>,
        title=<paper-title>,
        excerpt="[research][pdf] YYYY-MM-DD | <abstract-summary>. PDF: notes/papers/YYYY-Author-keyword.pdf. Session: <path>",
        tags=["research", "pdf", "lit-review", "<topic>"],
-       collection_id=<most-relevant-id>
+       collection_id=<id from config>
    )
 ```
 
@@ -135,13 +200,13 @@ Free-form, specific: `pacheco-vega` · `fastmcp` · `zettelkasten` · `clean-arc
 mcp_raindrop_search_bookmarks_by_tags(tags=["aic-processed"])
 
 # By text
-mcp_raindrop_search_bookmarks_by_text(text_query="pacheco vega")
+mcp_raindrop_search_bookmarks_by_text(text_query="<keyword>")
 
-# By collection
-mcp_raindrop_list_bookmarks(collection_id=40439354)  # GenAI
+# By collection (read id from config)
+mcp_raindrop_list_bookmarks(collection_id=<id from config>)
 
 # Combined
-mcp_raindrop_search_bookmarks(query="tango community", tags=["research"], collection_id=40382707)
+mcp_raindrop_search_bookmarks(query="<topic>", tags=["research"], collection_id=<id from config>)
 ```
 
 ## Rules
