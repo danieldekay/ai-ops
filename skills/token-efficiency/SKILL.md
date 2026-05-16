@@ -1,6 +1,6 @@
 ---
 name: token-efficiency
-description: Audits, scores, and rewrites AI configuration files to maximize token efficiency with zero behavior loss. Use when asked to optimize, compress, or reduce tokens in copilot-instructions.md, AGENTS.md, .github/instructions/*.md, .github/copilot-instructions.md, .github/agents/*.agent.md, skills/*/SKILL.md, or any system prompt / AI instruction file. Runs a 4-phase workflow: inventory → waste detection → rewrite → measure. Triggers on: "reduce tokens", "optimize instructions", "compress prompt", "too verbose", "token budget", "shrink system prompt", "refactor copilot config", "clean up instructions".
+description: 'Audits, scores, and rewrites AI configuration files to maximize token efficiency with zero behavior loss. Use when asked to optimize, compress, or reduce tokens in copilot-instructions.md, AGENTS.md, .github/instructions/*.md, .github/copilot-instructions.md, .github/agents/*.agent.md, skills/*/SKILL.md, or any system prompt / AI instruction file. Runs a 4-phase workflow: inventory → waste detection → rewrite → measure. Triggers on: "reduce tokens", "optimize instructions", "compress prompt", "too verbose", "token budget", "shrink system prompt", "refactor copilot config", "clean up instructions".'
 ---
 
 # Token Efficiency Optimizer
