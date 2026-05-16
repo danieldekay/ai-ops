@@ -1,89 +1,107 @@
 ---
 name: token-efficiency
-description: Audits and rewrites AI configuration files to maximize token efficiency. Use when asked to optimize, compress, or reduce tokens in copilot-instructions.md, AGENTS.md, .github/instructions/*.md, .github/copilot-instructions.md, system prompts, or any AI instruction/skill file. Eliminates redundancy, converts prose to structured syntax, applies progressive-loading patterns, and measures before/after token counts. Triggers on: "reduce tokens", "optimize instructions", "compress prompt", "too verbose", "token budget", "shrink system prompt", "refactor copilot config".
+description: Audits, scores, and rewrites AI configuration files to maximize token efficiency with zero behavior loss. Use when asked to optimize, compress, or reduce tokens in copilot-instructions.md, AGENTS.md, .github/instructions/*.md, .github/copilot-instructions.md, .github/agents/*.agent.md, skills/*/SKILL.md, or any system prompt / AI instruction file. Runs a 4-phase workflow: inventory → waste detection → rewrite → measure. Triggers on: "reduce tokens", "optimize instructions", "compress prompt", "too verbose", "token budget", "shrink system prompt", "refactor copilot config", "clean up instructions".
 ---
 
 # Token Efficiency Optimizer
 
-Audits, scores, and rewrites AI configuration files (copilot-instructions, AGENTS.md, `.github/instructions`, skill files, system prompts) to remove waste and maximize information density per token.
+Audits, scores, and rewrites AI configuration files to eliminate waste and maximize information density per token — without changing behavior or intent.
 
 ## When to Use This Skill
 
-- User says: "optimize", "compress", "reduce tokens", "too verbose", "shrink", "refactor" any AI config file
-- A `.github/copilot-instructions.md` or `AGENTS.md` file exceeds 300 lines
-- An instruction file has noticeable prose paragraphs that could be bullet lists or tables
-- You are reviewing a set of skills/instructions before a large agentic task to reduce context cost
-- User wants to measure token usage across their prompt-ops setup
+- File exceeds budget limits (see table below)
+- Prose paragraphs enumerate items that should be bullets or tables
+- Multiple files contain overlapping rules
+- User says: "optimize", "compress", "reduce tokens", "too verbose", "shrink", "refactor"
+- Pre-task context cost reduction before a large agentic session
 
 ## Prerequisites
 
-- Access to the files to be optimized (read permission on target repo or local workspace)
-- Optional: `tiktoken` Python library for precise GPT-4o / o3 token counting
-- Optional: [ttok](https://github.com/simonw/ttok) CLI for quick shell-based counting
+- Read access to the files in scope
+- Optional: `tiktoken` (`pip install tiktoken`) for exact GPT-4o/o3 counts
+- Optional: `ttok` CLI (`pip install ttok`) for quick shell counting
+- No tools? Use estimate: tokens ≈ words × 0.75
 
-## Step-by-Step Workflow
+## Phase 1 — Inventory & Clarify
 
-### Phase 1 — Inventory & Measure
-
-1. List all AI config files in scope:
+1. If no files are specified, **ask the user** which scope to audit:
+   - Current repo only
+   - Specific file(s)
+   - Global `~/.github/` personal skills
+   - Full prompt-ops setup
+2. Scan for all AI config files in scope:
    - `.github/copilot-instructions.md`
-   - `.github/instructions/*.instructions.md`
+   - `.github/instructions/*.instructions.md` (with `applyTo` globs)
    - `.github/agents/*.agent.md`
-   - `AGENTS.md` (root and subdirectories)
-   - `skills/*/SKILL.md`
-   - Any additional files the user specifies
-2. Count tokens per file using the method available (see [Token Counting Methods](./references/token-efficiency-patterns.md#token-counting-methods)).
-3. Record baseline in a markdown table:
+   - `AGENTS.md` (root + subdirectories)
+   - `skills/*/SKILL.md` (frontmatter `description` + body)
+   - Any user-specified files
+3. Count tokens per file; record baseline:
 
 ```markdown
-| File | Lines | Tokens | Priority |
-|------|-------|--------|----------|
-| .github/copilot-instructions.md | 142 | 1,840 | HIGH |
-| .github/instructions/agent-skills.instructions.md | 287 | 3,910 | HIGH |
+| File | Lines | Tokens | Budget | Status |
+|------|-------|--------|--------|--------|
+| .github/copilot-instructions.md | 142 | 1,840 | 1,500 | OVER |
+| .github/instructions/agent-skills.instructions.md | 287 | 3,910 | 1,200 | OVER |
+| AGENTS.md | 48 | 610 | 1,000 | OK |
 ```
 
-4. Flag files with **Waste Score ≥ 3** (see scoring below) as HIGH priority.
+4. Ask the user to confirm scope and priorities before proceeding to rewrite.
 
-### Phase 2 — Waste Detection
+## Phase 2 — Waste Detection
 
-Score each file for these waste patterns (1 point each):
+Score each file (1 point per pattern found):
 
 | # | Pattern | Detection Heuristic |
 |---|---------|--------------------|
-| 1 | **Redundant preamble** | First 10 lines repeat the filename or restate the obvious role | 
-| 2 | **Prose-instead-of-list** | 3+ consecutive sentences that enumerate items without bullets | 
-| 3 | **Duplicated context** | Same constraint/rule appears in 2+ files in the same repo | 
-| 4 | **Over-explained examples** | Example blocks longer than the rule they illustrate | 
-| 5 | **Filler phrases** | "Please remember to", "It is important that", "Always make sure", "You should" | 
-| 6 | **Nested repetition** | A section header restates the parent section | 
-| 7 | **Loaded frontmatter** | YAML frontmatter contains prose descriptions that duplicate the body | 
-| 8 | **Unused applyTo** | `applyTo` glob matches no files in the repo | 
+| 1 | **Redundant preamble** | First 10 lines repeat the filename or state the obvious role |
+| 2 | **Prose list** | 3+ consecutive sentences enumerating items without bullets |
+| 3 | **Duplicated rule** | Same constraint appears in 2+ files in the same repo |
+| 4 | **Over-explained example** | Example block longer than the rule it illustrates |
+| 5 | **Filler phrases** | "Please remember", "It is important that", "Always make sure", "You should" |
+| 6 | **Nested repetition** | Section header restates parent section |
+| 7 | **Loaded frontmatter** | YAML `description` contains prose duplicating the body |
+| 8 | **Unused `applyTo`** | Glob matches no files in repo |
+| 9 | **Philosophy preamble** | Opening paragraph explains what AI/Copilot is or its role in general |
+| 10 | **Changelog in instructions** | Version history or changelog entries inside the file |
 
-Report total waste score and list each detected pattern with line numbers.
+**Waste score → action:**
+- 0–2: no action needed
+- 3–4: schedule rewrite
+- 5–6: high priority
+- 7+: critical bloat
 
-### Phase 3 — Rewrite
+Report score and list each pattern with line numbers. **Preserve original intent** — flag ambiguous cuts and ask the user before removing them.
 
-Apply rewrites in priority order. See [Rewrite Patterns](./references/token-efficiency-patterns.md#rewrite-patterns) for full examples.
+## Phase 3 — Rewrite
 
-**Quick wins (apply first):**
-- Strip filler phrases (automated find/replace)
-- Convert prose lists to bullet syntax
-- Merge duplicate rules across files into one canonical location, reference from others
+Apply in order. See full examples in [token-efficiency-patterns.md](./references/token-efficiency-patterns.md).
+
+**Quick wins (automated):**
+- Strip filler phrases
+- Convert prose enumerations to bullet lists
+- Trim YAML `description` to ≤60 words
+- Delete redundant preambles
 
 **Structural rewrites:**
-- Replace paragraph explanations with a single imperative rule + one example
-- Move large reference tables to `references/` subfolder; link from SKILL.md
-- Use `applyTo` scoping to split a large catch-all instruction file into focused, narrowly-scoped files that only load when relevant
+- Replace paragraph explanations with one imperative rule + one inline example
+- Merge duplicate rules into canonical location; reference from others
+- Use `applyTo` scoping to split catch-all files into narrowly focused files
 
 **Progressive loading refactor:**
-- Extract rarely-needed content (e.g., full examples, troubleshooting tables) into `references/` files
-- Keep the main instruction file to under 150 lines / ~1,500 tokens
-- Link to reference files with relative paths
+- Move rarely-needed content (full examples, troubleshooting tables, large references) to `references/` subfolder
+- Keep main file ≤150 lines / ≤1,500 tokens; link to references
+- Move large workflows (>5 steps) to `references/*.md` per [agent-skills guidelines](../../.github/instructions/agent-skills.instructions.md)
 
-### Phase 4 — Measure & Report
+**Iterative polish (from `finalize-agent-prompt` pattern):**
+- After rewriting, re-read the file as if you are the AI agent receiving it
+- Check: is every rule still unambiguous? Is intent fully preserved?
+- Make one final pass for spelling, grammar, and clarity without changing meaning
+
+## Phase 4 — Measure & Report
 
 1. Recount tokens for all rewritten files.
-2. Produce a diff summary table:
+2. Produce diff table:
 
 ```markdown
 | File | Before | After | Saved | % |
@@ -91,51 +109,47 @@ Apply rewrites in priority order. See [Rewrite Patterns](./references/token-effi
 | .github/copilot-instructions.md | 1,840 | 920 | 920 | 50% |
 ```
 
-3. List any trade-offs: content removed, coverage gaps, or rules merged.
-4. Commit changes with message: `refactor(prompts): reduce token count by XX% — token-efficiency audit`
+3. List any trade-offs: content removed, merged rules, coverage gaps.
+4. Commit: `refactor(prompts): reduce token count by XX% — token-efficiency audit`
 
-## Token Budget Guidelines
+## Token Budget Reference
 
-Recommended upper limits for each file type (GPT-4o tokens):
+| File Type | Soft Limit | Hard Limit | Load Trigger |
+|-----------|-----------|------------|-------------|
+| `.github/copilot-instructions.md` | 800 | 1,500 | Every Copilot request |
+| `.github/instructions/*.md` | 600 | 1,200 | Per `applyTo` glob match |
+| `.github/agents/*.agent.md` | 1,200 | 2,500 | When agent is invoked |
+| `AGENTS.md` | 500 | 1,000 | Every coding agent session |
+| `skills/*/SKILL.md` body | 400 | 800 | On skill activation |
+| `skills/*/references/*.md` | 1,000 | 3,000 | On demand only |
 
-| File Type | Soft Limit | Hard Limit | Notes |
-|-----------|-----------|------------|-------|
-| `.github/copilot-instructions.md` | 800 | 1,500 | Loaded on every Copilot request |
-| `.github/instructions/*.md` | 600 | 1,200 | Loaded per matching file |
-| `.github/agents/*.agent.md` | 1,200 | 2,500 | Full agent system prompt |
-| `AGENTS.md` | 500 | 1,000 | Loaded by coding agents globally |
-| `skills/*/SKILL.md` (body only) | 400 | 800 | Body loads only on skill activation |
-| `skills/*/references/*.md` | 1,000 | 3,000 | Loaded on demand only |
-
-## Quick-Win Rewrites Cheat Sheet
+## Quick-Win Cheat Sheet
 
 ```
-BEFORE: "Please remember to always make sure that you validate input data 
-         before processing it, as this is important for security."
-AFTER:  "Validate all input before processing."
-Saved: ~18 tokens (75% reduction)
+BEFORE (31 tokens): "Please remember to always make sure that you validate
+                     all user input before passing it to any function."
+AFTER  (7 tokens):  "Validate all user input before passing to any function."
 
-BEFORE: Multi-line prose paragraph listing 5 rules
-AFTER:  5-bullet list, each ≤10 words
-Saved: ~40% on average
-
-BEFORE: YAML description field contains 200-word explanation
-AFTER:  YAML description = 1 sentence (≤60 words); details in body
-Saved: ~150 tokens
+BEFORE: 4-sentence prose listing 5 rules          → AFTER: 5-bullet list     → ~60% saved
+BEFORE: YAML description = 200-word paragraph     → AFTER: 1 sentence ≤60w   → ~150 tokens saved
+BEFORE: 600-line SKILL.md loaded on every turn    → AFTER: 120-line + refs/  → ~83% context saved
 ```
 
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| Token count tool not available | Count words × 0.75 as rough estimate; use online tokenizer at platform.openai.com/tokenizer |
-| Rewrite breaks Copilot behavior | Re-add the removed rule as a single imperative bullet; prose is not needed |
-| `applyTo` scope unclear | Check VS Code Copilot docs: glob patterns relative to workspace root |
-| Merged rule produces conflicts | Use a canonical `rules/` folder and `#include`-style references where supported |
+| No token counter available | Words × 0.75 estimate; or [platform.openai.com/tokenizer](https://platform.openai.com/tokenizer) |
+| Rewrite changes Copilot behavior | Re-add removed rule as single imperative bullet; prose is never needed |
+| `applyTo` scope unclear | Glob is relative to workspace root; test with `glob` in VS Code file search |
+| Merged rule conflicts | Keep canonical copy in the most-specific `instructions/` file; delete from general file |
+| User unsure which files to include | Default to: copilot-instructions + all instructions/ + AGENTS.md + active skills |
 
 ## References
 
-- [Token Efficiency Patterns Reference](./references/token-efficiency-patterns.md) — full rewrite examples, anti-patterns library, token counting scripts
-- [Agent Skills File Guidelines](../../.github/instructions/agent-skills.instructions.md) — canonical skill structure rules for this repo
-- [VS Code Custom Instructions Docs](https://code.visualstudio.com/docs/copilot/copilot-customization)
+- [Rewrite Patterns & Token Counting Scripts](./references/token-efficiency-patterns.md)
+- [Agent Skills Guidelines for This Repo](../../.github/instructions/agent-skills.instructions.md)
+- [VS Code Copilot Customization Docs](https://code.visualstudio.com/docs/copilot/copilot-customization)
 - [OpenAI Tokenizer](https://platform.openai.com/tokenizer)
+- [ttok CLI](https://github.com/simonw/ttok)
+- Inspired by: [finalize-agent-prompt](https://github.com/github/awesome-copilot/tree/main/skills/finalize-agent-prompt), [boost-prompt](https://github.com/github/awesome-copilot/tree/main/skills/boost-prompt), [copilot-instructions-blueprint-generator](https://github.com/github/awesome-copilot/tree/main/skills/copilot-instructions-blueprint-generator) from [github/awesome-copilot](https://github.com/github/awesome-copilot)
