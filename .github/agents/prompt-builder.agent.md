@@ -1,6 +1,7 @@
 ---
 description: 'Expert prompt engineering and validation system for creating high-quality prompts - Brought to you by microsoft/edge-ai'
-tools: ['vscode', 'execute/getTerminalOutput', 'execute/runInTerminal', 'read/problems', 'read/readFile', 'read/terminalSelection', 'read/terminalLastCommand', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'sequential-thinking/*', 'tavily/*', 'time/*', 'agent', 'memory', 'todo']
+name: 'Prompt Builder'
+tools: ['codebase', 'edit/editFiles', 'web/fetch', 'githubRepo', 'problems', 'runCommands', 'search', 'searchResults', 'terminalLastCommand', 'terminalSelection', 'usages', 'terraform', 'Microsoft Docs', 'context7']
 ---
 
 # Prompt Builder Instructions

@@ -1,0 +1,59 @@
+lockfile_version: '1'
+generated_at: '2026-05-16T14:46:33.331484+00:00'
+apm_version: 0.13.0
+dependencies:
+- repo_url: github/awesome-copilot
+  host: github.com
+  resolved_commit: 4e4b34c48d3f50934a7a073aed0d05fd46e99b09
+  virtual_path: agents/janitor.agent.md
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .github/agents/janitor.agent.md
+  deployed_file_hashes:
+    .github/agents/janitor.agent.md: sha256:ab8ec21df723f5265fc52c153c1390836dce2a7532e5cfc66e67c103a79ce47f
+  content_hash: sha256:d2bdf3b2d8ef0028de639bfa1f2b65b55ec1d62525a24084022928cd47efedd8
+- repo_url: github/awesome-copilot
+  host: github.com
+  resolved_commit: 4e4b34c48d3f50934a7a073aed0d05fd46e99b09
+  virtual_path: agents/prompt-builder.agent.md
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .github/agents/prompt-builder.agent.md
+  deployed_file_hashes:
+    .github/agents/prompt-builder.agent.md: sha256:1f2296311ebdb3c082bab8194a377adf6207e88522227cc381158402549b0f1a
+  content_hash: sha256:4a795556672aa5ce01c5d178879249ebb75304e4641c6a2e072d854a8d645f24
+- repo_url: github/awesome-copilot
+  host: github.com
+  resolved_commit: 4e4b34c48d3f50934a7a073aed0d05fd46e99b09
+  virtual_path: agents/prompt-engineer.agent.md
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .github/agents/prompt-engineer.agent.md
+  deployed_file_hashes:
+    .github/agents/prompt-engineer.agent.md: sha256:8894d62bf78e94b16228d6df6362ab09a1c8db6b79b7a2403fbc222df29869e5
+  content_hash: sha256:2e3ceb5d54064c99b21f63241ab5ad02973236e7bab4fd0181f6077065c8000a
+- repo_url: github/awesome-copilot
+  host: github.com
+  resolved_commit: 4e4b34c48d3f50934a7a073aed0d05fd46e99b09
+  virtual_path: instructions/agent-skills.instructions.md
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .github/instructions/agent-skills.instructions.md
+  deployed_file_hashes:
+    .github/instructions/agent-skills.instructions.md: sha256:4ec02159b0f335f0ce2362cd366aca67743fd0bec9148e240b1a7a19ec2eaadb
+  content_hash: sha256:47030fd379254cd5a13407bd141b6eefbfcd01dd96444541ac16ad34beb973eb
+- repo_url: github/awesome-copilot
+  host: github.com
+  resolved_commit: 4e4b34c48d3f50934a7a073aed0d05fd46e99b09
+  virtual_path: instructions/instructions.instructions.md
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .github/instructions/instructions.instructions.md
+  deployed_file_hashes:
+    .github/instructions/instructions.instructions.md: sha256:a38e647c44a1b3702cea44569ddb4cb3f3b53a78d08f7f457d14c12e9e65eaba
+  content_hash: sha256:c190999f713a13bc01b918acf454e7546a9dc9fe254e0f9d6705df3ff698c917

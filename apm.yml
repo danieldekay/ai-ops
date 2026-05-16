@@ -1,0 +1,16 @@
+name: ai-ops
+version: 1.0.0
+description: APM project for ai-ops
+author: Daniel de Kay
+targets:
+- copilot
+dependencies:
+  apm:
+  - github/awesome-copilot/agents/janitor.agent.md
+  - github/awesome-copilot/agents/prompt-builder.agent.md
+  - github/awesome-copilot/agents/prompt-engineer.agent.md
+  - github/awesome-copilot/instructions/agent-skills.instructions.md
+  - github/awesome-copilot/instructions/instructions.instructions.md
+  mcp: []
+includes: auto
+scripts: {}
