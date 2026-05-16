@@ -1,6 +1,6 @@
 ---
 description: 'Guidelines for creating high-quality Agent Skills for GitHub Copilot'
-applyTo: '**/.github/skills/**/SKILL.md'
+applyTo: '**/skills/**/SKILL.md'
 ---
 
 # Agent Skills File Guidelines
@@ -12,7 +12,6 @@ Instructions for creating effective and portable Agent Skills that enhance GitHu
 Agent Skills are self-contained folders with instructions and bundled resources that teach AI agents specialized capabilities. Unlike custom instructions (which define coding standards), skills enable task-specific workflows that can include scripts, examples, templates, and reference data.
 
 Key characteristics:
-
 - **Portable**: Works across VS Code, Copilot CLI, and Copilot coding agent
 - **Progressive loading**: Only loaded when relevant to the user's request
 - **Resource-bundled**: Can include scripts, templates, examples alongside instructions
@@ -38,7 +37,7 @@ Each skill **must** have its own subdirectory containing at minimum a `SKILL.md`
 ```yaml
 ---
 name: webapp-testing
-description: Toolkit for testing local web applications using Playwright. Use when asked to verify frontend functionality, debug UI behavior, capture browser screenshots, check for visual regressions, or view browser console logs. Supports Chrome, Firefox, and WebKit browsers.
+description: 'Toolkit for testing local web applications using Playwright. Use when asked to verify frontend functionality, debug UI behavior, capture browser screenshots, check for visual regressions, or view browser console logs. Supports Chrome, Firefox, and WebKit browsers.'
 license: Complete terms in LICENSE.txt
 ---
 ```
@@ -46,7 +45,7 @@ license: Complete terms in LICENSE.txt
 | Field | Required | Constraints |
 |-------|----------|-------------|
 | `name` | Yes | Lowercase, hyphens for spaces, max 64 characters (e.g., `webapp-testing`) |
-| `description` | Yes | Clear description of capabilities AND use cases, max 1024 characters |
+| `description` | Yes | 10–1024 characters, clear capabilities AND use cases, wrapped in single quotes |
 | `license` | No | Reference to LICENSE.txt (e.g., `Complete terms in LICENSE.txt`) or SPDX identifier |
 
 ### Description Best Practices
@@ -54,25 +53,21 @@ license: Complete terms in LICENSE.txt
 **CRITICAL**: The `description` field is the PRIMARY mechanism for automatic skill discovery. Copilot reads ONLY the `name` and `description` to decide whether to load a skill. If your description is vague, the skill will never be activated.
 
 **What to include in description:**
-
 1. **WHAT** the skill does (capabilities)
 2. **WHEN** to use it (specific triggers, scenarios, file types, or user requests)
 3. **Keywords** that users might mention in their prompts
 
 **Good description:**
-
 ```yaml
-description: Toolkit for testing local web applications using Playwright. Use when asked to verify frontend functionality, debug UI behavior, capture browser screenshots, check for visual regressions, or view browser console logs. Supports Chrome, Firefox, and WebKit browsers.
+description: 'Toolkit for testing local web applications using Playwright. Use when asked to verify frontend functionality, debug UI behavior, capture browser screenshots, check for visual regressions, or view browser console logs. Supports Chrome, Firefox, and WebKit browsers.'
 ```
 
 **Poor description:**
-
 ```yaml
-description: Web testing helpers
+description: 'Web testing helpers'
 ```
 
 The poor description fails because:
-
 - No specific triggers (when should Copilot load this?)
 - No keywords (what user prompts would match?)
 - No capabilities (what can it actually do?)
@@ -85,10 +80,76 @@ The body contains detailed instructions that Copilot loads AFTER the skill is ac
 |---------|---------|
 | `# Title` | Brief overview of what this skill enables |
 | `## When to Use This Skill` | List of scenarios (reinforces description triggers) |
-| `## Prerequisites` | Required tools, dependencies, environment setup |
-| `## Step-by-Step Workflows` | Numbered steps for common tasks |
-| `## Troubleshooting` | Common issues and solutions table |
+| `## Prerequisites` | Required tools, dependencies, environment setup (if applicable) |
+| `## Step-by-Step Workflows` | Numbered steps for repeatable procedures (build, deploy, setup) |
+| `## Gotchas` | Proactive warnings about non-obvious behavior ("never do X because Y") |
+| `## Troubleshooting` | Reactive fixes for known issues ("if you see X, try Y") |
 | `## References` | Links to bundled docs or external resources |
+
+Not every skill needs every section. Skip `## Prerequisites` if there are no external dependencies. Skip `## Step-by-Step Workflows` if the skill is purely advisory. Include `## Gotchas` whenever the skill involves external tools, APIs, or platform-specific behavior.
+
+For content quality principles (what to include and what to leave out), see [Writing High-Impact Skills](#writing-high-impact-skills) below.
+
+### Writing Each Section
+
+**`# Title`** — One sentence stating what the skill enables. Avoid generic phrasing; be specific about the domain.
+
+**`## When to Use This Skill`** — A bullet list of concrete scenarios that reinforce the description triggers. This helps Copilot confirm it loaded the right skill.
+
+```markdown
+## When to Use This Skill
+
+- User asks to test a web application in a browser
+- User needs to capture screenshots for visual regression testing
+- User wants to debug frontend behavior with browser console logs
+```
+
+**`## Prerequisites`** — Only include if the skill requires tools, services, or configuration that Copilot cannot assume are available. List exact install commands.
+
+```markdown
+## Prerequisites
+
+- [Playwright](https://playwright.dev/) installed: `npm install -D @playwright/test`
+- At least one browser engine installed: `npx playwright install chromium`
+```
+
+**`## Step-by-Step Workflows`** — Numbered steps for repeatable procedures where sequence matters (build, deploy, environment setup). Describe WHAT to accomplish at each stage, not hardcoded file paths or line numbers — steps should be adaptable to different project structures. For complex workflows (>5 steps), split into `references/` files and link to them.
+
+```markdown
+## Step-by-Step Workflows
+
+### Deploy to Staging
+
+1. Build the project: `npm run build`
+2. Run pre-deploy validation: `npm run validate`
+3. Deploy to staging: `npm run deploy -- --env staging`
+4. Verify the health endpoint returns 200
+```
+
+**`## Gotchas`** — Proactive warnings that prevent mistakes. Document non-obvious defaults, API quirks, version-specific behavior, and common traps. Bold the key constraint, then explain why.
+
+```markdown
+## Gotchas
+
+- **Never** call `billing.charge()` without checking `user.hasPaymentMethod` first —
+  the SDK throws an unrecoverable error instead of returning a failure.
+- The `currency` field expects ISO 4217 codes, not display names.
+  Copilot often writes "dollars" instead of "USD".
+```
+
+**`## Troubleshooting`** — Reactive fixes for known issues, presented as a table of symptom → solution pairs. Each row should be self-contained and actionable.
+
+```markdown
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Plugin won't connect | Check servers are running (`npm run start:all`) |
+| Browser blocks localhost | Allow local network access, or try a different browser |
+| Tool execution times out | Ensure the plugin UI is open and shows "Connected" |
+```
+
+**`## References`** — Links to bundled docs in `references/`, external documentation, or related skills. Use relative paths for bundled files.
 
 ## Bundling Resources
 
@@ -124,18 +185,16 @@ Skills can include additional files that Copilot accesses on-demand:
     └── config.template   # Config template the AI agent fills in
 ```
 
-> **LICENSE.txt**: When creating a skill, download the Apache 2.0 license text from <https://www.apache.org/licenses/LICENSE-2.0.txt> and save as `LICENSE.txt`. Update the copyright year and owner in the appendix section.
+> **LICENSE.txt**: When creating a skill, download the Apache 2.0 license text from https://www.apache.org/licenses/LICENSE-2.0.txt and save as `LICENSE.txt`. Update the copyright year and owner in the appendix section.
 
 ### Assets vs Templates: Key Distinction
 
 **Assets** are static resources **consumed unchanged** in the output:
-
 - A `logo.png` that gets embedded into a generated document
 - A `report-template.html` copied as output format
 - A `custom-font.ttf` applied to text rendering
 
 **Templates** are starter code/scaffolds that **the AI agent actively modifies**:
-
 - A `scaffold.py` where the AI agent inserts logic
 - A `config.template` where the AI agent fills in values based on user requirements
 - A `hello-world/` project directory that the AI agent extends with new features
@@ -167,7 +226,6 @@ Skills use three-level loading for efficiency:
 | 3. Resources | Scripts, examples, docs | Only when Copilot references them |
 
 This means:
-
 - Install many skills without consuming context
 - Only relevant content loads per task
 - Resources don't load until explicitly needed
@@ -194,7 +252,6 @@ When including scripts, prefer cross-platform languages:
 | Bash/Shell | Simple automation tasks |
 
 Best practices:
-
 - Include help/usage documentation (`--help` flag)
 - Handle errors gracefully with clear messages
 - Avoid storing credentials or secrets
@@ -203,7 +260,6 @@ Best practices:
 ### When to Bundle Scripts
 
 Include scripts in your skill when:
-
 - The same code would be rewritten repeatedly by the agent
 - Deterministic reliability is critical (e.g., file manipulation, API calls)
 - Complex logic benefits from being pre-tested rather than generated each time
@@ -220,6 +276,51 @@ Scripts enable evolution: even simple operations benefit from being implemented 
 - Warn users before irreversible actions
 - Document any network operations or external calls
 
+## Writing High-Impact Skills
+
+### Focus on What Copilot Doesn't Know
+
+Do not include information Copilot already knows from its training data — standard language syntax, common library usage, or well-documented API behavior. Every line in a skill should teach something Copilot would otherwise get wrong or miss entirely. If the information is on the first page of official docs, leave it out. Focus on internal conventions, non-obvious defaults, version-specific quirks, and domain-specific workflows that change Copilot's behavior.
+
+### Context Budget Awareness
+
+All skill descriptions share a limited portion of the available context window during discovery. Your description competes with every other installed skill for Copilot's attention. Keep descriptions concise and keyword-dense — aim for the shortest text that still communicates WHAT, WHEN, and relevant KEYWORDS. Verbose descriptions don't just waste your own budget; they reduce visibility for every other skill in the system.
+
+### Gotchas Are Your Highest-Signal Content
+
+The `## Gotchas` section is consistently the most valuable part of any skill — proactive warnings that prevent mistakes before they happen. This is distinct from `## Troubleshooting`, which provides reactive fixes after something goes wrong. Treat gotchas as a living section: every time Copilot produces a wrong result, add a gotcha. Bold the key constraint, then explain why (e.g., "**Never** call `X()` without checking `Y` first — the SDK throws an unrecoverable error").
+
+### Prefer Flexible Guidelines Over Rigid Steps
+
+Use numbered steps only for concrete, repeatable procedures (build, deploy, environment setup) where the sequence genuinely matters. For open-ended tasks (debugging, refactoring, code review), provide decision criteria and reference information instead — Copilot needs flexibility to adapt to the user's specific situation.
+
+```markdown
+# ❌ Too rigid
+1. Open the file at src/api/handlers.ts
+2. Find the function named processOrder
+3. Add a try-catch block around lines 45-60
+
+# ✅ Flexible
+When fixing error handling in API handlers:
+- Ensure all database operations have proper error handling
+- Use the project's ErrorHandler utility (see ./references/error-handling.md)
+- Log errors with enough context to debug in production
+```
+
+### Use Progressive Disclosure for Large Skills
+
+If your SKILL.md exceeds ~200 lines, consider splitting detailed content into subdirectories. This reduces context consumption — Copilot loads only the core instructions initially and pulls reference material on demand.
+
+```markdown
+## Reference Files
+
+- `references/api.md` — complete function signatures and return types
+- `references/error-codes.md` — every error code this service can return
+- `scripts/validate.sh` — run this after making changes to verify correctness
+
+Read these files as needed for your current task. Do not read them all upfront.
+```
+
 ## Common Patterns
 
 ### Parameter Table Pattern
@@ -234,21 +335,7 @@ Document parameters clearly:
 | `--verbose` | No | `false` | Enable verbose output |
 ```
 
-## Validation Checklist
-
-Before publishing a skill:
-
-- [ ] `SKILL.md` has valid frontmatter with `name` and `description`
-- [ ] `name` is lowercase with hyphens, ≤64 characters
-- [ ] `description` clearly states **WHAT** it does, **WHEN** to use it, and relevant **KEYWORDS**
-- [ ] Body includes when to use, prerequisites, and step-by-step workflows
-- [ ] SKILL.md body kept under 500 lines (split large content into `references/` folder)
-- [ ] Large workflows (>5 steps) split into `references/` folder with clear links from SKILL.md
-- [ ] Scripts include help documentation and error handling
-- [ ] Relative paths used for all resource references
-- [ ] No hardcoded credentials or secrets
-
-## Workflow Execution Pattern
+### Workflow Execution Pattern
 
 When executing multi-step workflows, create a TODO list where each step references the relevant documentation:
 
@@ -262,6 +349,23 @@ When executing multi-step workflows, create a TODO list where each step referenc
 ```
 
 This ensures traceability and allows resuming workflows if interrupted.
+
+## Validation Checklist
+
+Before publishing a skill:
+
+- [ ] `SKILL.md` has valid frontmatter with `name` and `description`
+- [ ] `name` is lowercase with hyphens, ≤64 characters
+- [ ] `description` clearly states **WHAT** it does, **WHEN** to use it, and relevant **KEYWORDS**
+- [ ] `description` is concise and keyword-dense (respects context budget)
+- [ ] Body focuses on information Copilot wouldn't know from training data
+- [ ] Body includes when to use, prerequisites (if applicable), and core instructions
+- [ ] `## Gotchas` section present if skill involves non-obvious behavior, API quirks, or common traps
+- [ ] SKILL.md body under 500 lines (consider splitting into `references/` at ~200 lines; 500 is the hard maximum)
+- [ ] Large workflows (>5 steps) split into `references/` folder with clear links from SKILL.md
+- [ ] Scripts include help documentation and error handling
+- [ ] Relative paths used for all resource references
+- [ ] No hardcoded credentials or secrets
 
 ## Related Resources
 
