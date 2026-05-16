@@ -4,7 +4,6 @@ description: APM project for ai-ops
 author: Daniel de Kay
 targets:
 - copilot
-- opencode
 dependencies:
   apm:
   - github/awesome-copilot/agents/janitor.agent.md
