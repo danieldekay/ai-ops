@@ -1,446 +1,275 @@
 ---
 name: data-analysis-planner
-description: 'Planning-only skill for data analysis projects. Use when starting any data analysis project to plan environment setup, software requirements, and the full analysis workflow before writing a single line of analysis code. Triggers: "plan my data analysis", "set up a data analysis project", "I have data and want to analyze it", "help me structure my analysis", "what do I need to install for this analysis", "plan my R analysis", "plan my Python analysis", "data analysis project setup", "analysis workflow plan", "analysis planning", "plan a study". Produces a PLAN.md with 5 phases — plan, setup, validate, bootstrap, analysis handoff — plus idempotent setup scripts. Best practice enforced: no shell one-liners, all actions in scripts, Python uses venv, R uses renv.'
-argument-hint: '[description of analysis goal, data format/source, language preference (Python/R)]'
+description: 'Planning-only skill for data analysis projects. Use when starting any data analysis project, notebook workflow, R Markdown/Quarto analysis, Python analysis, statistical study, or AI-assisted analysis repo before writing analysis code. Produces a token-efficient PLAN.md, atomic analysis-unit structure, reproducible environment plan, idempotent setup/validation/bootstrap scripts, caching/provenance strategy, and handoff to specialist analysis skills. Triggers on planning data analysis, setting up analysis projects, structuring notebooks/Rmd files, avoiding giant notebooks, keeping calculation and interpretation together, saveRDS/cache/targets/provenance, or Copilot-friendly analysis workflows.'
+argument-hint: '[analysis goal, data format/source, language preference, output type, reproducibility needs]'
 ---
 
 # Data Analysis Planner
 
-A **planning-only** skill. Its job is to produce a structured `PLAN.md` and a set of **idempotent setup scripts** before any analysis begins. No analysis code is written here — that is delegated to a specialist skill in Phase 5.
+Use this skill before analysis begins. Its job is to design the project structure,
+`PLAN.md`, and repeatable setup/validation/bootstrap scripts so a later specialist
+skill can do the actual analysis with minimal context waste.
 
----
+Keep the main answer planning-only. Do not fit models, clean data, make final figures, or write substantive analysis code here.
 
-## Core Principles
+## Core Output
 
-These apply to every artifact this skill produces:
+Produce or update these artifacts:
 
-- **Scripts, not one-liners**: Every action that needs to be repeated (setup, validation, bootstrap) lives in a named script file. Never produce raw shell commands to be pasted into a terminal.
-- **Idempotent by default**: Every script checks its preconditions before acting. Re-running is always safe — it should say "already done" and exit cleanly.
-- **Locked environments**: Python uses `venv` + `pyproject.toml`/`requirements.txt`. R uses `renv` + `renv.lock`. Exact versions are pinned.
-- **Plan before code**: The `PLAN.md` is the contract. Pause and confirm with the user before producing any scripts.
+- `analysis-plan/PLAN.md` - the project contract.
+- `analysis-plan/scripts/setup_env.[py|R]` - idempotent environment setup.
+- `analysis-plan/scripts/validate_env.[py|R]` - package/runtime validation.
+- `analysis-plan/scripts/bootstrap.[py|R]` - read-only data inspection.
+- Optional `.github/copilot-instructions.md` - project briefing for AI-assisted analysis repos.
 
----
+For R Markdown, Quarto, or notebook projects, the plan must also define atomic
+analysis units: small files where calculation and interpretation live together,
+with persisted intermediate outputs and provenance metadata.
+
+## Context Budget Rule
+
+Read only what you need:
+
+- Read [script templates](./references/script-templates.md) only when generating setup, validation, or bootstrap scripts.
+- Read [atomic analysis units](./references/atomic-analysis-units.md) when the user is planning R Markdown,
+  Quarto, notebooks, reports, cached results, provenance, or Copilot-friendly analysis structure.
+- Read [analysis handoff](./references/analysis-handoff.md) when selecting the specialist skill for Phase 5.
+
+This keeps the skill cheap during early planning and loads details only at the moment they become useful.
+
+## Planning Principles
+
+- **Atomic analysis units**: Split the work into small files that each answer one analytical concern. Each unit should be readable in full by an AI agent.
+- **Calculation beside interpretation**: Place result-producing chunks immediately next to the prose that interprets them. Prefer inline computed values over hardcoded numbers.
+- **Aggregate upward**: Final reports should assemble completed units and cached results. They should not recompute heavy upstream work.
+- **Persist intermediate results**: Save expensive or important outputs to `cache/` or pipeline storage so interpretation can be revised without rerunning the full analysis.
+- **Track provenance**: Plan short hash stamps or sidecar metadata so the agent and human can see which data/code state produced an interpretation.
+- **Scripts, not one-liners**: Repeatable actions belong in named scripts. Avoid giving the user paste-only shell snippets.
+- **Idempotent by default**: Scripts check preconditions and are safe to rerun.
+- **Locked environments**: Python uses `.venv` plus pinned requirements or `uv`. R uses `renv` and `renv.lock`.
 
 ## The 5-Phase Workflow
 
-### Phase 1 — Plan
+### Phase 1 - Plan
 
-**Goal**: Understand the project and produce `analysis-plan/PLAN.md`.
+Create `analysis-plan/PLAN.md` from the template below. Interview the user only for missing critical details; otherwise extract answers from context.
 
-Interview the user (or extract from context) to gather:
+Gather:
 
 | Question | Why it matters |
-|----------|---------------|
-| What is the research / analysis question? | Determines the analysis type and methods |
-| What is the data format, size, and source? | Determines I/O libraries and memory strategy |
-| Language preference: Python or R? | Determines the full toolchain |
-| Target output: report, figure, model, table? | Determines which packages are needed |
-| Is reproducibility critical? | Determines lockfile strictness |
+| --- | --- |
+| What is the research or analysis question? | Determines methods and outputs. |
+| What is the data format, size, and source? | Determines I/O, memory, and validation strategy. |
+| Python, R, Stata, or mixed? | Determines environment and scripts. |
+| Target output: report, figure, table, model, dashboard? | Determines package needs and file structure. |
+| Is reproducibility or auditability critical? | Determines lockfile strictness, cache metadata, and provenance. |
+| Will an AI agent revise code or interpretation later? | Determines atomic-unit size and `.github/copilot-instructions.md`. |
 
-Produce `analysis-plan/PLAN.md` using the template below.
+For notebook/Rmd/Quarto projects, create an **Atomic Unit Map** before proposing files:
 
----
+| Unit | Analytical concern | Inputs | Output artifact | Cache/provenance | Interpretation location |
+| --- | --- | --- | --- | --- | --- |
+| `01_cleaning` | Validate and clean raw data | `data/raw/*` | `cache/step01_clean.*` | sidecar metadata/hash | same unit file |
+| `02_eda` | Describe key variables | cleaned data | figures/tables | cached figures/table data | same unit file |
+| `03_model` | Estimate model | cleaned data | model object/table | model/data/code hash | same unit file |
+| `04_results` | Summarize findings | cached outputs | report-ready sections | loaded metadata | same unit file |
 
-### Phase 2 — Setup
+### Phase 2 - Setup
 
-**Goal**: Create an idempotent environment setup script.
+Generate the environment setup script only after the plan is accepted. Use the language-specific template in `references/script-templates.md`.
 
-#### Python setup
+For R analysis with atomic documents, include likely packages in the plan where appropriate:
+`renv`, `rmarkdown` or `quarto`, `digest`, `jsonlite`, and optionally `targets`
+for full pipeline automation.
 
-Create `analysis-plan/scripts/setup_env.py`:
+### Phase 3 - Validate
 
-```python
-#!/usr/bin/env python3
-"""
-Idempotent Python environment setup.
-Run with: python analysis-plan/scripts/setup_env.py
-Re-running is always safe.
-"""
-from __future__ import annotations
-import subprocess
-import sys
-from pathlib import Path
+Generate the validation script from `references/script-templates.md`. It should verify runtime version and required packages before any data is touched.
 
-VENV_DIR = Path(".venv")
-REQUIREMENTS = Path("requirements.txt")
+### Phase 4 - Bootstrap
 
+Generate the bootstrap script from `references/script-templates.md`. It should load the input read-only and print shape, types, missingness, basic summaries, and a few example rows.
 
-def _pip() -> Path:
-    """Return the pip executable inside the venv."""
-    return VENV_DIR / ("Scripts" if sys.platform == "win32" else "bin") / "pip"
+### Phase 5 - Analysis Skill Handoff
 
+Recommend the specialist analysis skill or workflow. Do not start analysis in this skill. If no existing specialist fits, ask whether to adapt the closest skill or create a new one.
 
-def setup_venv() -> None:
-    if VENV_DIR.exists():
-        print(f"[ok] Virtual environment already exists at {VENV_DIR}")
-        return
-    print(f"[setup] Creating virtual environment at {VENV_DIR} ...")
-    subprocess.run([sys.executable, "-m", "venv", str(VENV_DIR)], check=True)
-    print("[ok] Virtual environment created.")
+## Recommended Repository Structures
 
+### R Markdown / Quarto Analysis
 
-def install_packages() -> None:
-    if not REQUIREMENTS.exists():
-        print(f"[skip] No {REQUIREMENTS} found — create it first.")
-        return
-    print("[setup] Installing packages from requirements.txt ...")
-    subprocess.run([str(_pip()), "install", "--upgrade", "pip"], check=True)
-    subprocess.run([str(_pip()), "install", "-r", str(REQUIREMENTS)], check=True)
-    print("[ok] Packages installed.")
+Use this when the user needs reports, inline interpretation, reproducible statistical analysis, or Copilot-friendly R work:
 
-
-if __name__ == "__main__":
-    setup_venv()
-    install_packages()
-    print("\n[done] Activate with: source .venv/bin/activate")
+```text
+project/
+|-- .github/copilot-instructions.md
+|-- data/
+|   |-- raw/
+|   `-- processed/
+|-- cache/
+|   |-- step01_clean.rds
+|   |-- step01_clean_meta.json
+|   |-- step02_model.rds
+|   `-- step02_model_meta.json
+|-- analysis/
+|   |-- 01_cleaning.Rmd
+|   |-- 02_eda.Rmd
+|   |-- 03_model.Rmd
+|   `-- 04_results.Rmd
+|-- report.Rmd
+|-- renv.lock
+`-- analysis-plan/
 ```
 
-Include a `requirements.txt` stub populated with the packages identified in Phase 1.
+Prefer Quarto (`.qmd`) when the user wants `freeze: auto`, multi-format publishing, or a cleaner project-level execution model. Keep the same atomic structure.
 
-**Best-practice notes for Python:**
-- Use `.venv/` (not `env/` or `venv/`) — consistent, gitignore-able.
-- Pin versions in `requirements.txt` after the first successful install via `pip freeze > requirements.txt`.
-- For more reproducible setups, recommend `uv` as a drop-in for `pip`/`venv`. Use `uv venv .venv` and `uv pip install -r requirements.txt`.
+### Python Notebook Analysis
 
-#### R setup
+Use this when the user prefers notebooks:
 
-Create `analysis-plan/scripts/setup_env.R`:
-
-```r
-# Idempotent R environment setup via renv.
-# Run with: Rscript analysis-plan/scripts/setup_env.R
-# Re-running is always safe.
-
-# --- 1. Ensure renv is available ---
-if (!requireNamespace("renv", quietly = TRUE)) {
-  message("[setup] Installing renv ...")
-  install.packages("renv", repos = "https://cloud.r-project.org")
-}
-
-# --- 2. Initialise or restore ---
-if (file.exists("renv.lock")) {
-  message("[ok] renv.lock found. Restoring packages ...")
-  renv::restore()
-} else {
-  message("[setup] No renv.lock found. Initialising renv ...")
-  renv::init(bare = TRUE)   # bare = TRUE: don't auto-discover; we install explicitly
-  message("[setup] Installing project packages ...")
-  # Add project-specific packages here:
-  # renv::install(c("tidyverse", "fixest", "modelsummary"))
-  renv::snapshot()
-  message("[ok] renv initialised and lock file written.")
-}
-
-message("\n[done] Activate in R with: renv::activate()")
+```text
+project/
+|-- .github/copilot-instructions.md
+|-- data/raw/
+|-- data/processed/
+|-- cache/
+|-- notebooks/
+|   |-- 01_cleaning.ipynb
+|   |-- 02_eda.ipynb
+|   |-- 03_model.ipynb
+|   `-- 04_results.ipynb
+|-- src/
+|   `-- project_name/
+|-- reports/
+|-- requirements.txt or pyproject.toml
+`-- analysis-plan/
 ```
 
-**Best-practice notes for R:**
-- `renv::init(bare = TRUE)` is safer than the default — prevents renv from guessing dependencies from scripts before they're ready.
-- After adding packages manually, run `renv::snapshot()` to update `renv.lock`.
-- Commit `renv.lock` but not the `renv/library/` folder (it's in `.gitignore` by default).
-
----
-
-### Phase 3 — Validate
-
-**Goal**: Confirm the environment is usable before touching the data.
-
-#### Python validation script
-
-Create `analysis-plan/scripts/validate_env.py`:
-
-```python
-#!/usr/bin/env python3
-"""
-Validate that the Python environment is correctly set up.
-Run with: python analysis-plan/scripts/validate_env.py
-"""
-import importlib
-import sys
-
-# List packages required for this project (fill from Phase 1 plan)
-REQUIRED_PACKAGES: list[str] = [
-    # e.g. "pandas", "numpy", "statsmodels", "matplotlib"
-]
-
-
-def check_python_version(min_major: int = 3, min_minor: int = 10) -> None:
-    major, minor = sys.version_info[:2]
-    if (major, minor) < (min_major, min_minor):
-        raise RuntimeError(
-            f"Python {min_major}.{min_minor}+ required; found {major}.{minor}"
-        )
-    print(f"[ok] Python {major}.{minor}")
-
-
-def check_packages(packages: list[str]) -> None:
-    failed: list[str] = []
-    for pkg in packages:
-        try:
-            importlib.import_module(pkg)
-            print(f"[ok] {pkg}")
-        except ImportError:
-            print(f"[FAIL] {pkg} — not importable")
-            failed.append(pkg)
-    if failed:
-        raise RuntimeError(f"Missing packages: {failed}")
-
-
-if __name__ == "__main__":
-    check_python_version()
-    check_packages(REQUIRED_PACKAGES)
-    print("\n[ok] Environment validated.")
-```
-
-#### R validation script
-
-Create `analysis-plan/scripts/validate_env.R`:
-
-```r
-# Validate that the R environment is correctly set up.
-# Run with: Rscript analysis-plan/scripts/validate_env.R
-
-# Fill in from Phase 1 plan:
-required_packages <- c(
-  # e.g. "tidyverse", "fixest", "modelsummary"
-)
-
-failed <- c()
-for (pkg in required_packages) {
-  if (requireNamespace(pkg, quietly = TRUE)) {
-    message(sprintf("[ok] %s  %s", pkg, as.character(packageVersion(pkg))))
-  } else {
-    message(sprintf("[FAIL] %s — not installed", pkg))
-    failed <- c(failed, pkg)
-  }
-}
-
-if (length(failed) > 0) {
-  stop(sprintf("Missing packages: %s", paste(failed, collapse = ", ")))
-}
-
-message("\n[ok] Environment validated.")
-```
-
----
-
-### Phase 4 — Bootstrap
-
-**Goal**: Quick, non-destructive data inspection to confirm that data loads and the environment works end-to-end. Produces a short printed summary (shape, dtypes, missing values, basic stats). **Does not modify the data.**
-
-#### Python bootstrap script
-
-Create `analysis-plan/scripts/bootstrap.py`:
-
-```python
-#!/usr/bin/env python3
-"""
-Bootstrap data check — quick, non-destructive inspection.
-Run with: python analysis-plan/scripts/bootstrap.py <path/to/data>
-"""
-import sys
-from pathlib import Path
-
-
-def load_data(path: Path):
-    import pandas as pd
-
-    suffix = path.suffix.lower()
-    loaders = {
-        ".csv": pd.read_csv,
-        ".tsv": lambda p: pd.read_csv(p, sep="\t"),
-        ".parquet": pd.read_parquet,
-        ".xlsx": pd.read_excel,
-        ".xls": pd.read_excel,
-        ".dta": pd.read_stata,
-        ".feather": pd.read_feather,
-    }
-    if suffix not in loaders:
-        raise ValueError(f"Unsupported file type: {suffix}")
-    return loaders[suffix](path)
-
-
-def inspect(df) -> None:
-    import pandas as pd
-
-    print(f"\n--- Shape ---\n{df.shape[0]:,} rows × {df.shape[1]} columns")
-    print(f"\n--- Column types ---\n{df.dtypes.to_string()}")
-    print(f"\n--- Missing values ---\n{df.isnull().sum()[df.isnull().sum() > 0].to_string() or 'None'}")
-    print(f"\n--- Numeric summary ---")
-    print(df.describe().to_string())
-    print(f"\n--- First 3 rows ---\n{df.head(3).to_string()}")
-
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python bootstrap.py <path/to/data>")
-        sys.exit(1)
-    path = Path(sys.argv[1])
-    df = load_data(path)
-    inspect(df)
-    print("\n[ok] Bootstrap complete — data and environment are ready.")
-```
-
-#### R bootstrap script
-
-Create `analysis-plan/scripts/bootstrap.R`:
-
-```r
-# Bootstrap data check — quick, non-destructive inspection.
-# Usage: Rscript analysis-plan/scripts/bootstrap.R path/to/data.csv
-# (Adjust the loader below for your file type.)
-
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) == 0) stop("Usage: Rscript bootstrap.R <path/to/data>")
-
-data_path <- args[1]
-ext <- tolower(tools::file_ext(data_path))
-
-# Idempotent package check
-load_pkg <- function(pkg) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    stop(sprintf("Package '%s' required but not installed. Run setup_env.R first.", pkg))
-  }
-  invisible(library(pkg, character.only = TRUE))
-}
-
-# Load based on extension
-df <- switch(ext,
-  "csv"     = { load_pkg("readr");  readr::read_csv(data_path, show_col_types = FALSE) },
-  "tsv"     = { load_pkg("readr");  readr::read_tsv(data_path, show_col_types = FALSE) },
-  "dta"     = { load_pkg("haven");  haven::read_dta(data_path) },
-  "xlsx"    = { load_pkg("readxl"); readxl::read_excel(data_path) },
-  "parquet" = { load_pkg("arrow");  arrow::read_parquet(data_path) },
-  stop(sprintf("Unsupported file type: .%s", ext))
-)
-
-cat("\n--- Shape ---\n")
-cat(sprintf("%s rows × %s columns\n", format(nrow(df), big.mark=","), ncol(df)))
-
-cat("\n--- Column types ---\n")
-print(dplyr::glimpse(df))
-
-cat("\n--- Missing values ---\n")
-missing <- colSums(is.na(df))
-print(missing[missing > 0])
-
-cat("\n--- Numeric summary ---\n")
-print(summary(df))
-
-cat("\n[ok] Bootstrap complete — data and environment are ready.\n")
-```
-
----
-
-### Phase 5 — Analysis Skill Handoff
-
-**Goal**: Identify and recommend the right specialist skill for the actual analysis, rather than writing analysis code here.
-
-Use the table below to recommend a skill from [brycewang-stanford/Awesome-Agent-Skills-for-Empirical-Research](https://github.com/brycewang-stanford/Awesome-Agent-Skills-for-Empirical-Research):
-
-| Analysis type | Language | Recommended skill | Notes |
-|---------------|----------|-------------------|-------|
-| Econometrics / causal inference | Python | `00.1-Full-empirical-analysis-skill_Python` | OLS, IV, DID, RD, PSM, DML |
-| Econometrics / causal inference | R | `00.3-Full-empirical-analysis-skill_R` | fixest + tidyverse 8-step pipeline |
-| Econometrics / causal inference | Stata | `00.2-Full-empirical-analysis-skill_Stata` | reghdfe / ivreg2 / csdid |
-| Agent-native one-import DSL | Python | `00-Full-empirical-analysis-skill_StatsPAI` | `import statspai as sp` |
-| End-to-end R workflow (research starter) | R | from `skills/14-luischanci-claude-code-research-starter` | Good starting point |
-| End-to-end R workflow (social science) | R | from `skills/15-Felpix-Studios-social-science-research` | R + Python tracks |
-| Bayesian analysis | R | `23-Learning-Bayesian-Statistics-baygent-skills` | brms / rstan / cmdstanr |
-
-If the user's analysis type is not covered by an existing skill from that repo, ask whether to:
-1. Adapt the closest skill listed above, or
-2. Build a new skill using the `skill-creator` skill.
-
----
+Keep heavy reusable logic in `src/`; keep notebooks as atomic calculation-plus-interpretation units.
 
 ## PLAN.md Template
 
-When producing Phase 1 output, always use this exact template saved at `analysis-plan/PLAN.md`:
+When producing Phase 1 output, save this structure to `analysis-plan/PLAN.md` and fill it with project-specific details:
 
 ```markdown
 # Analysis Plan: [Project Name]
 
 **Date**: [YYYY-MM-DD]
-**Language**: [Python / R / Stata]
+**Language**: [Python / R / Stata / mixed]
 **Status**: Planning
-
----
 
 ## 1. Research Question
 
-_What question is this analysis trying to answer?_
+[Question and decision/use context.]
 
 ## 2. Data
 
 | Property | Value |
-|----------|-------|
+| --- | --- |
 | Source | |
 | Format | |
-| Size (estimated) | |
+| Size estimate | |
 | Key variables | |
 | Unit of observation | |
 | Time period | |
 
-## 3. Analysis Type
+## 3. Repository Structure
 
-_e.g., EDA, OLS regression, DID, RDD, classification, clustering_
+[Proposed folders and why they exist.]
 
-## 4. Expected Outputs
+## 4. Atomic Analysis Units
 
-_e.g., summary table, regression table, figure, model object_
+| Unit file | Concern | Inputs | Outputs/cache | Interpretation rule |
+| --- | --- | --- | --- | --- |
+| `analysis/01_...` | | | | calculation and prose adjacent |
 
----
+## 5. Caching and Provenance
 
-## Phase 2 — Environment Setup
+- Intermediate results: [saveRDS/readRDS, parquet, pickle/joblib, targets, etc.]
+- Metadata: [sidecar JSON, digest hashes, target metadata]
+- Staleness check: [how prose is tied to data/model/code state]
 
-- **Script**: `analysis-plan/scripts/setup_env.[py|R]`
-- **Package manager**: [pip/uv | renv]
-- **Environment location**: [.venv/ | renv/]
-- **Key packages**:
-  - [package 1 — purpose]
-  - [package 2 — purpose]
-- **How to run**: `python analysis-plan/scripts/setup_env.py` _or_ `Rscript analysis-plan/scripts/setup_env.R`
+## 6. Expected Outputs
 
-## Phase 3 — Validation
+[Report, table, figure, model object, dashboard, etc.]
 
-- **Script**: `analysis-plan/scripts/validate_env.[py|R]`
-- **Checks**:
-  - [ ] Runtime version (Python X.Y+ / R X.Y+)
-  - [ ] All required packages importable
-- **How to run**: `python analysis-plan/scripts/validate_env.py` _or_ `Rscript analysis-plan/scripts/validate_env.R`
+## Phase 2 - Environment Setup
 
-## Phase 4 — Bootstrap
+- Script: `analysis-plan/scripts/setup_env.[py|R]`
+- Package manager: [pip/uv | renv]
+- Environment location: [.venv/ | renv/]
+- Key packages:
+  - [package - purpose]
+- How to run: [script command]
 
-- **Script**: `analysis-plan/scripts/bootstrap.[py|R]`
-- **Data path**: [path/to/data]
-- **Expected shape**: [rows × columns]
-- **How to run**: `python analysis-plan/scripts/bootstrap.py path/to/data` _or_ `Rscript analysis-plan/scripts/bootstrap.R path/to/data`
+## Phase 3 - Validation
 
-## Phase 5 — Analysis Skill
+- Script: `analysis-plan/scripts/validate_env.[py|R]`
+- Checks:
+  - [ ] Runtime version
+  - [ ] Required packages importable
 
-- **Recommended skill**: [skill name and repo link]
-- **Rationale**: [why this skill fits the analysis type]
-- **Next step**: Load this skill and invoke it with the cleaned, validated data.
+## Phase 4 - Bootstrap
 
----
+- Script: `analysis-plan/scripts/bootstrap.[py|R]`
+- Data path: [path/to/data]
+- Read-only checks: shape, types, missingness, summary, sample rows
+
+## Phase 5 - Analysis Skill
+
+- Recommended skill/workflow: [name]
+- Rationale: [why it fits]
+- Handoff prompt: [what to ask the specialist skill next]
 
 ## Checklist
 
-- [ ] Phase 2: `setup_env` script created
-- [ ] Phase 2: Packages listed in requirements.txt / renv
-- [ ] Phase 3: `validate_env` script created and passing
-- [ ] Phase 4: `bootstrap` script created and passing
-- [ ] Phase 5: Analysis skill identified and confirmed with user
+- [ ] Atomic unit map reviewed
+- [ ] Setup script created
+- [ ] Validation script created and passing
+- [ ] Bootstrap script created and passing
+- [ ] Cache/provenance strategy confirmed
+- [ ] Specialist analysis skill selected
 ```
 
----
+## Copilot Instructions Scaffold
 
-## What This Skill Does NOT Do
+When AI-assisted editing is part of the workflow, create or propose `.github/copilot-instructions.md`:
 
-- **Does not run analysis**: No regressions, no ML models, no statistics. That is Phase 5.
-- **Does not install packages**: The setup script is produced here; the user runs it.
-- **Does not modify data**: The bootstrap script is read-only.
-- **Does not write analysis scripts**: Those are produced by the specialist skill in Phase 5.
+```markdown
+# Project Context
 
-The output of this skill is always: `PLAN.md` + three idempotent scripts + a recommendation for the Phase 5 skill.
+This is a data analysis project on [topic].
+
+## Structure
+
+- `analysis/` or `notebooks/` contains atomic analysis units.
+- Each unit keeps calculation and interpretation together.
+- Intermediate results live in `cache/` with metadata where relevant.
+- Final reports aggregate completed units and cached outputs.
+
+## Conventions
+
+- Prefer inline computed values over hardcoded result numbers.
+- Do not modify cache files directly unless regenerating the owning unit.
+- Keep each analysis unit small enough to review in one agent context.
+- When changing data transformations or model formulas, update provenance metadata and nearby interpretation.
+```
+
+## Gotchas
+
+- **Do not plan one giant notebook or Rmd.** It forces the agent to scan unrelated context and makes interpretation drift more likely.
+- **Do not separate all prose into a final report too early.** Interpretation belongs beside the computation first; aggregate later.
+- **Do not let `report.Rmd` or a final notebook recompute upstream work.** Load completed artifacts and metadata instead.
+- **Do not rely only on `knitr cache=TRUE` for auditability.** It is convenient, but explicit saved outputs plus metadata are easier for agents and humans to inspect.
+- **Do not hardcode statistical values in prose.** Use inline expressions or generated summary tables so revisions cannot silently become stale.
+
+## What This Skill Does Not Do
+
+- It does not run the analysis.
+- It does not install packages directly.
+- It does not modify raw data.
+- It does not write final analysis scripts beyond setup, validation, and bootstrap scaffolds.
+
+The finished handoff should leave the user with a clear plan, a token-efficient project
+structure, reproducible setup scripts, and enough provenance design that future AI work
+can focus on one atomic unit at a time.

@@ -1,0 +1,23 @@
+{
+  "skill_name": "data-analysis-planner",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a messy CSV export from a survey and want to analyze it in R Markdown. Please plan the project before we write any analysis code. I want Copilot to help later without reading one huge Rmd.",
+      "expected_output": "A planning-only response that creates a PLAN.md structure, recommends atomic Rmd units, keeps calculation and interpretation adjacent, includes renv setup, and defines cache/provenance conventions.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Set up a Python notebook analysis project for customer churn data. I expect EDA, a model, and a final report, but I want the notebooks split so an AI agent can revise one section at a time.",
+      "expected_output": "A plan with notebook-sized atomic analysis units, data/cache/src/report folders, setup/validation/bootstrap script plan, and a bounded handoff prompt for the later modeling skill.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "We are doing a reproducible Quarto analysis with expensive model fitting. I need a plan that prevents stale interpretation when formulas or input data change.",
+      "expected_output": "A Quarto-oriented plan that recommends freeze or targets where appropriate, explicit persisted model outputs, metadata or digest hashes, and interpretation located beside result chunks before final aggregation.",
+      "files": []
+    }
+  ]
+}
