@@ -4,7 +4,7 @@
 type: synthesis-report
 created_date: "{{YYYY-MM-DD}}"
 created_time: "{{HH:MM:SS}} UTC"
-author: "Daniel"
+author: "{{AUTHOR}}"
 research_agent: "deep-researcher"
 status: "{{draft|final}}"
 tags: ["research", "synthesis", "{{topic_tag}}"]

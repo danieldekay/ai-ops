@@ -1,24 +1,25 @@
 ---
 name: limesurvey-survey-builder
-description: Generate, validate, and deploy LimeSurvey surveys using the tango-tools markdown-first pipeline. Use when asked to create, edit, or deploy a LimeSurvey survey as a markdown file, when working with rnt-community-survey files, when running `limesurvey validate`, `limesurvey convert`, or `limesurvey api` CLI commands, or when writing surveys for survey.tangoresearch.net. Covers markdown schema, question types, relevance/branching logic, parser quirks, and the full validate→convert→deploy workflow.
+description: Generate, validate, and deploy LimeSurvey surveys using a markdown-first pipeline. Use when asked to create, edit, or deploy a LimeSurvey survey as a markdown file, when running `limesurvey validate`, `limesurvey convert`, or `limesurvey api` CLI commands. Covers markdown schema, question types, relevance/branching logic, parser quirks, and the full validate→convert→deploy workflow.
 license: Complete terms in LICENSE.txt
 ---
 
 # LimeSurvey Survey Builder — Markdown-First Workflow
 
-Build, validate, and deploy LimeSurvey surveys using the `tango-tools` markdown pipeline at `2ndBrain/code/src/limesurvey/`.
+Build, validate, and deploy LimeSurvey surveys using the `tango-tools` markdown pipeline.
 
 ---
 
 ## Environment
 
 ```bash
-# All commands run from 2ndBrain/code/
-cd /Users/dekay/Dokumente/2ndBrain/code
+# All commands run from the tango-tools project root
+# Set LIMESURVEY_TOOLS_ROOT to your local clone of the tango-tools repo
+cd $LIMESURVEY_TOOLS_ROOT
 PYTHONPATH=src uv run limesurvey <command>
 ```
 
-**LimeSurvey instance**: `survey.tangoresearch.net`
+**LimeSurvey instance**: configured via `$LIMESURVEY_URL` or `~/.limesurvey.conf`
 **Config file**: `~/.limesurvey.conf` (url / username / password)
 
 ---
@@ -306,7 +307,7 @@ PYTHONPATH=src uv run limesurvey convert markdown survey.md output.lss
 
 ```bash
 PYTHONPATH=src uv run limesurvey api import-lss output.lss \
-  --url https://survey.tangoresearch.net \
+  --url $LIMESURVEY_URL \
   --username admin \
   --password SECRET
 ```
@@ -324,7 +325,7 @@ PYTHONPATH=src uv run limesurvey api import-lss output.lss --replace-id 1
 
 ```bash
 PYTHONPATH=src uv run limesurvey api deploy survey.json \
-  --url https://survey.tangoresearch.net \
+  --url $LIMESURVEY_URL \
   --dry-run   # validate first
 ```
 
@@ -332,14 +333,14 @@ PYTHONPATH=src uv run limesurvey api deploy survey.json \
 
 ```bash
 PYTHONPATH=src uv run limesurvey api list \
-  --url https://survey.tangoresearch.net \
+  --url $LIMESURVEY_URL \
   --username admin --password SECRET
 ```
 
 ### Credentials via env vars (avoids repeating flags)
 
 ```bash
-export LIMESURVEY_URL=https://survey.tangoresearch.net
+export LIMESURVEY_URL=https://your-limesurvey-instance.example.com
 export LIMESURVEY_USERNAME=admin
 export LIMESURVEY_PASSWORD=SECRET
 PYTHONPATH=src uv run limesurvey api import-lss output.lss
@@ -347,14 +348,14 @@ PYTHONPATH=src uv run limesurvey api import-lss output.lss
 
 ### Credentials from 1Password (recommended)
 
-The LimeSurvey admin credentials are stored in 1Password with item ID `sewp2rhkhlocijocmxchg3dlle`.
+Store your LimeSurvey admin credentials in 1Password and reference them by item ID or name.
 
 ```bash
 # One-liner: pull credentials inline and deploy
-cd /Users/dekay/Dokumente/2ndBrain/code
-LIMESURVEY_URL=https://survey.tangoresearch.net \
-LIMESURVEY_USERNAME=$(op item get sewp2rhkhlocijocmxchg3dlle --fields label=username) \
-LIMESURVEY_PASSWORD=$(op item get sewp2rhkhlocijocmxchg3dlle --fields label=password --reveal) \
+cd $LIMESURVEY_TOOLS_ROOT
+LIMESURVEY_URL=$LIMESURVEY_URL \
+LIMESURVEY_USERNAME=$(op item get <op-item-id> --fields label=username) \
+LIMESURVEY_PASSWORD=$(op item get <op-item-id> --fields label=password --reveal) \
 PYTHONPATH=src uv run limesurvey api import-lss /tmp/output.lss
 ```
 
@@ -555,9 +556,9 @@ max_length: 1000
 
 Validate and deploy:
 ```bash
-cd /Users/dekay/Dokumente/2ndBrain/code
+cd $LIMESURVEY_TOOLS_ROOT
 PYTHONPATH=src uv run limesurvey validate /path/to/survey.md
 PYTHONPATH=src uv run limesurvey convert markdown /path/to/survey.md /tmp/survey.lss
 PYTHONPATH=src uv run limesurvey api import-lss /tmp/survey.lss \
-  --url https://survey.tangoresearch.net --username admin --password SECRET
+  --url $LIMESURVEY_URL --username admin --password SECRET
 ```

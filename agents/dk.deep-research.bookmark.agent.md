@@ -70,7 +70,7 @@ After synthesis is complete, update existing bookmarks:
 2. For each source that has an associated Zettelkasten note:
    - Search for the existing bookmark
    - Update the excerpt to append: `ZK: [[<note_id>]]`
-3. For academic papers with PDFs, append: `PDF: /Users/dekay/Dokumente/2ndBrain/notes/papers/<filename>`
+3. For academic papers with PDFs, append: `PDF: <papers-dir>/<filename>`
 
 ## Rules
 

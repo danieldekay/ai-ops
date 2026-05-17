@@ -32,7 +32,7 @@ Update the `## Tier 5: SYNTHESIZE` section with:
 
 ## Phase 1: Research Brief (ALWAYS)
 
-Create `research-brief.md` in the session folder using the template at `/Users/dekay/Dokumente/projects/programmieren/copilot-config-promptops/skills/deep-research/templates/research-brief.md`.
+Create `research-brief.md` in the session folder using the template at `skills/deep-research/templates/research-brief.md` (locate via file search in the workspace).
 
 1. Write an executive summary (2-3 sentences capturing the core answer)
 2. List key findings with confidence levels from Tier 4 evaluation
@@ -45,7 +45,7 @@ Create `research-brief.md` in the session folder using the template at `/Users/d
 
 ## Phase 2: Open Questions Document (ALWAYS)
 
-Create `open-questions.md` in the session folder using the template at `/Users/dekay/Dokumente/projects/programmieren/copilot-config-promptops/skills/deep-research/templates/open-questions.md`.
+Create `open-questions.md` in the session folder using the template at `skills/deep-research/templates/open-questions.md` (locate via file search in the workspace).
 
 Pull from:
 - Tier 4 gap analysis
@@ -63,7 +63,7 @@ Categorize questions by:
 
 ## Phase 3: Hypotheses Document (ALWAYS)
 
-Create `hypotheses.md` in the session folder using the template at `/Users/dekay/Dokumente/projects/programmieren/copilot-config-promptops/skills/deep-research/templates/hypotheses.md`.
+Create `hypotheses.md` in the session folder using the template at `skills/deep-research/templates/hypotheses.md` (locate via file search in the workspace).
 
 Pull from:
 - Tier 4 preliminary hypotheses
@@ -80,7 +80,7 @@ For each hypothesis:
 
 ## Phase 4: Further Research Document (ALWAYS)
 
-Create `further-research.md` in the session folder using the template at `/Users/dekay/Dokumente/projects/programmieren/copilot-config-promptops/skills/deep-research/templates/further-research.md`.
+Create `further-research.md` in the session folder using the template at `skills/deep-research/templates/further-research.md` (locate via file search in the workspace).
 
 Include THREE categories of research questions:
 
@@ -123,7 +123,7 @@ If 5+ permanent notes were created on related subtopics:
 
 ## Phase 7: Synthesis Report (Complex Topics)
 
-For complex, multi-theme topics, also produce `synthesis-report.md` using the template at `/Users/dekay/Dokumente/projects/programmieren/copilot-config-promptops/skills/deep-research/templates/synthesis-report.md`:
+For complex, multi-theme topics, also produce `synthesis-report.md` using the template at `skills/deep-research/templates/synthesis-report.md` (locate via file search in the workspace):
 - Full evidence chains per theme
 - Complete triangulation matrix
 - Conflict analysis

@@ -44,7 +44,7 @@ If the task is primarily about reading the upstream community documentation corr
 ### Deployment Architecture
 
 ```yaml
-# Docker Compose stack on rs1000-g12
+# Docker Compose stack on <target-host>
 services:
   authentik-server:     # Web UI and API
   authentik-worker:     # Background tasks
@@ -271,7 +271,7 @@ These are read on first startup. Subsequent changes must be made through the adm
 
 ```bash
 # Navigate to ansible workspace
-cd /Users/dekay/Dokumente/projects/servers/ansible
+cd <ansible-workspace>
 
 # Authenticate with 1Password
 eval $(op signin)
@@ -280,18 +280,18 @@ eval $(op signin)
 export ANSIBLE_BECOME_PASS=$(op item get <item-id> --fields password --reveal)
 
 # Run playbook with check mode first (dry run)
-uv run ansible-playbook playbooks/g12/authentik-deploy.yml \
-  -i inventories/netcup/hosts.yml \
+uv run ansible-playbook playbooks/<host>/authentik-deploy.yml \
+  -i inventories/<provider>/hosts.yml \
   --check --diff
 
 # Execute deployment
-uv run ansible-playbook playbooks/g12/authentik-deploy.yml \
-  -i inventories/netcup/hosts.yml
+uv run ansible-playbook playbooks/<host>/authentik-deploy.yml \
+  -i inventories/<provider>/hosts.yml
 
 # Verify deployment
 curl -I https://id.yourdomain.org
 curl https://id.yourdomain.org/-/health/live/
-ssh user@rs1000-g12 'docker ps | grep authentik'
+ssh user@<target-host> 'docker ps | grep authentik'
 ```
 
 ### Post-Deployment Validation

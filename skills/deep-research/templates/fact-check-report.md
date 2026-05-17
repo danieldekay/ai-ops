@@ -4,7 +4,7 @@
 type: fact-check-report
 created_date: "{{YYYY-MM-DD}}"
 created_time: "{{HH:MM:SS}} UTC"
-author: "Daniel"
+author: "{{AUTHOR}}"
 research_agent: "deep-researcher"
 mode: "fact-check"
 status: "{{draft|final}}"

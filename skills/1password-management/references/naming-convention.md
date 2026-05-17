@@ -1,7 +1,8 @@
 # 1Password Naming Convention
 
+> **Note**: Replace `[YourApp]`, `[Project2]`, `[Project3]`, `[server-alias]`, `[Provider]`, `[Provider2]` with your own project and provider names.
+
 **Version**: 1.0  
-**Date**: March 27, 2026  
 **Vault**: Infrastructure
 
 ## Executive Summary
@@ -12,12 +13,12 @@ This document defines a standardized naming convention for 1Password items in th
 - **Consistency**: Predictable patterns
 - **Scalability**: Easy to add new items
 
-## Current Issues Identified
+## Common Issues to Fix
 
-1. **Duplicates**: "Cloudflare RNT" (2x), "VServer 2025 Netcup" (3x)
-2. **Inconsistent casing**: "authentik-db" vs "Authentik Admin"
+1. **Duplicates**: Multiple items with similar names for the same resource
+2. **Inconsistent casing**: `"service-db"` vs `"Service Admin"`
 3. **Mixed separators**: Spaces, hyphens, colons, parentheses
-4. **Ambiguous scope**: "TMD api key (DEV)" vs "TMD API token"
+4. **Ambiguous scope**: `"[App] api key (DEV)"` vs `"[App] API token"`
 5. **No clear hierarchy**: Services mixed with servers mixed with credentials
 
 ## Proposed Naming Convention
@@ -39,14 +40,14 @@ This document defines a standardized naming convention for 1Password items in th
 | Prefix | Type | Example |
 |--------|------|---------|
 | `API` | API keys, tokens | `API Cloudflare - dns-management` |
-| `DB` | Database credentials | `DB PostgreSQL - tangoatlas-prod` |
-| `SSH` | SSH keys, certificates | `SSH Hetzner - storage-box-prod` |
-| `SMTP` | Email credentials | `SMTP Netcup - admin@tangoatlas.org` |
-| `OAUTH` | OAuth2/OIDC credentials | `OAUTH Authentik - tangoatlas-dev` |
-| `ADMIN` | Admin panels/dashboards | `ADMIN Traefik - g12-prod` |
-| `SVC` | Service accounts | `SVC AWS-IAM - rnt-mailer` |
-| `SRV` | Server/infrastructure login | `SRV Debbie - root-access` |
-| `APP` | Application credentials | `APP TangoAtlas - django-dev` |
+| `DB` | Database credentials | `DB PostgreSQL - [yourapp]-prod` |
+| `SSH` | SSH keys, certificates | `SSH [Provider] - storage-box-prod` |
+| `SMTP` | Email credentials | `SMTP [Provider] - admin-[yourapp]` |
+| `OAUTH` | OAuth2/OIDC credentials | `OAUTH Authentik - [yourapp]-dev` |
+| `ADMIN` | Admin panels/dashboards | `ADMIN Traefik - [server-alias]-prod` |
+| `SVC` | Service accounts | `SVC AWS-IAM - [project]-mailer` |
+| `SRV` | Server/infrastructure login | `SRV [server-alias] - root-access` |
+| `APP` | Application credentials | `APP [YourApp] - backend-dev` |
 | `VAULT` | Vault/secret manager | `VAULT Ansible - encryption-key` |
 
 ### Naming Rules
@@ -63,9 +64,9 @@ This document defines a standardized naming convention for 1Password items in th
    - ALL CAPS in resource names: `ALL DNS` → `all-dns`
    - Email addresses in title (put in username field instead)
 5. **Projects/brands**: Use consistent naming
-   - `TangoAtlas` (not `tangoatlas` or `Tangoatlas`)
-   - `RNT` (Rhein-Neckar-Tango)
-   - `TMD` (TangoMarathons.com Directory)
+   - `[YourApp]` — pick one canonical casing and stick to it
+   - `[Project2]` — short code for a second project
+   - `[Project3]` — short code for a third project
 
 ## Migration Examples
 
@@ -74,22 +75,22 @@ This document defines a standardized naming convention for 1Password items in th
 | Before | After | Rationale |
 |--------|-------|-----------|
 | `Cloudflare API - ALL DNS Zones` | `API Cloudflare - all-dns-zones` | Type prefix, lowercase resource |
-| `authentik-db` | `DB PostgreSQL - authentik-prod` | Type prefix, DB engine, environment |
-| `AWS IAM - svc-rnt-mailer` | `SVC AWS-IAM - rnt-mailer` | SVC prefix for service accounts |
-| `TMD api key (PROD)` | `API TMD - backend-prod` | Consistent format, hyphen separator |
-| `TMD API token` | `API TMD - api-token-prod` | Disambiguate from "api key" |
-| `SMTP Netcup - admin@tangoatlas.org` | `SMTP Netcup - admin-tangoatlas` | Remove @ from title |
-| `Debbie Zigbee2MQTT` | `APP Debbie - zigbee2mqtt` | APP prefix for application |
-| `Hetzner Storage Box u506313` | `SSH Hetzner - storage-box-u506313-prod` | SSH type, consistent format |
-| `Private Key for G12>StorageBox` | `SSH Hetzner - g12-storage-box-prod` | Clear hierarchy |
-| `TangoAtlas Development` | `APP TangoAtlas - django-dev` | Specific purpose |
-| `tangoatlas-authentik` | `OAUTH Authentik - tangoatlas-prod` | Type prefix, environment |
-| `SSO RNT ` | `OAUTH Authentik - rnt-prod` | Type prefix, provider, no trailing space |
+| `[yourapp]-db` | `DB PostgreSQL - [yourapp]-prod` | Type prefix, DB engine, environment |
+| `AWS IAM - svc-[project]-mailer` | `SVC AWS-IAM - [project]-mailer` | SVC prefix for service accounts |
+| `[App] api key (PROD)` | `API [App] - backend-prod` | Consistent format, hyphen separator |
+| `[App] API token` | `API [App] - api-token-prod` | Disambiguate from "api key" |
+| `SMTP [Provider] - admin@[yourapp].org` | `SMTP [Provider] - admin-[yourapp]` | Remove @ from title |
+| `[server] Zigbee2MQTT` | `APP [server] - zigbee2mqtt` | APP prefix for application |
+| `[Provider] Storage Box u123456` | `SSH [Provider] - storage-box-u123456-prod` | SSH type, consistent format |
+| `Private Key for [server]>StorageBox` | `SSH [Provider] - [server]-storage-box-prod` | Clear hierarchy |
+| `[YourApp] Development` | `APP [YourApp] - backend-dev` | Specific purpose |
+| `[yourapp]-authentik` | `OAUTH Authentik - [yourapp]-prod` | Type prefix, environment |
+| `SSO [Project2] ` | `OAUTH Authentik - [project2]-prod` | Type prefix, provider, no trailing space |
 | `Ansible Vault` | `VAULT Ansible - encryption-key` | Type prefix |
-| `Debbie Server` | `SRV Debbie - root-access` | Server type prefix |
-| `G12 Cron Service - HTTP Basic Auth` | `ADMIN G12 - cron-http-auth` | Admin credential |
-| `Traefik Admin - RS1000 G12` | `ADMIN Traefik - g12-dashboard` | Consistent format |
-| `OpenRouter TMD` | `API OpenRouter - tmd-extraction` | Purpose clarification |
+| `[server] Server` | `SRV [server] - root-access` | Server type prefix |
+| `[server] Cron Service - HTTP Basic Auth` | `ADMIN [server] - cron-http-auth` | Admin credential |
+| `Traefik Admin - [server]` | `ADMIN Traefik - [server]-dashboard` | Consistent format |
+| `OpenRouter [App]` | `API OpenRouter - [app]-extraction` | Purpose clarification |
 | `Context7 MCP` | `API Context7 - mcp-docs` | Purpose clarification |
 | `Brave API` | `API Brave - search-api` | Purpose clarification |
 
@@ -97,11 +98,11 @@ This document defines a standardized naming convention for 1Password items in th
 
 | Before | After |
 |--------|-------|
-| `Debbie Server` | `SRV Debbie - root-access` |
-| `VServer 2025 Netcup` | `SRV Netcup - vserver-2025-prod` |
-| `Friendica G12` | `APP G12 - friendica-prod` |
-| `Monitoring G12` | `APP G12 - monitoring-prod` |
-| `CrowdSec Console - RS1000 G12` | `ADMIN CrowdSec - g12-console` |
+| `[server] Server` | `SRV [server] - root-access` |
+| `VServer 2025 [Provider]` | `SRV [Provider] - vserver-2025-prod` |
+| `Friendica [server]` | `APP [server] - friendica-prod` |
+| `Monitoring [server]` | `APP [server] - monitoring-prod` |
+| `CrowdSec Console - [server]` | `ADMIN CrowdSec - [server]-console` |
 
 ### AWS Credentials
 
@@ -109,38 +110,38 @@ All AWS IAM service accounts follow consistent pattern:
 
 | Before | After |
 |--------|-------|
-| `AWS IAM - svc-rnt-mailer` | `SVC AWS-IAM - rnt-mailer` |
-| `AWS IAM - svc-tmd-mailer` | `SVC AWS-IAM - tmd-mailer` |
+| `AWS IAM - svc-[project]-mailer` | `SVC AWS-IAM - [project]-mailer` |
+| `AWS IAM - svc-[project2]-mailer` | `SVC AWS-IAM - [project2]-mailer` |
 | `AWS IAM - svc-admin-cli` | `SVC AWS-IAM - admin-cli` |
 | `AWS IAM - svc-arq-backup` | `SVC AWS-IAM - arq-backup` |
-| `AWS SES - directory@tangomarathons.com` | `SMTP AWS-SES - directory-tangomarathons` |
+| `AWS SES - directory@[yourdomain].com` | `SMTP AWS-SES - directory-[yourapp]` |
 
 ### Database Credentials
 
 | Before | After |
 |--------|-------|
 | `authentik-db` | `DB PostgreSQL - authentik-prod` |
-| `tangoatlas-db` | `DB PostgreSQL - tangoatlas-prod` |
-| `TMD MariaDB` | `DB MariaDB - tmd-prod` |
-| `PostgreSQL Keycloak - RS1000 G12` | `DB PostgreSQL - keycloak-g12` |
+| `[yourapp]-db` | `DB PostgreSQL - [yourapp]-prod` |
+| `[App] MariaDB` | `DB MariaDB - [app]-prod` |
+| `PostgreSQL Keycloak - [server]` | `DB PostgreSQL - keycloak-[server]` |
 
 ### OAuth/SSO Credentials
 
 | Before | After |
 |--------|-------|
-| `tangoatlas-authentik` | `OAUTH Authentik - tangoatlas-prod` |
-| `SSO RNT ` | `OAUTH Authentik - rnt-prod` |
-| `SSO TMD ` | `OAUTH Authentik - tmd-prod` |
+| `[yourapp]-authentik` | `OAUTH Authentik - [yourapp]-prod` |
+| `SSO [Project2] ` | `OAUTH Authentik - [project2]-prod` |
+| `SSO [Project3] ` | `OAUTH Authentik - [project3]-prod` |
 | `OpenWebUI OAuth2 - Production` | `OAUTH Authentik - openwebui-prod` |
-| `Authentik Admin - RNT (id.tangoatlas.org)` | `ADMIN Authentik - rnt-panel` |
-| `Keycloak Admin - RS1000 G12` | `ADMIN Keycloak - g12-panel` |
+| `Authentik Admin - [Project2] (id.[yourdomain].org)` | `ADMIN Authentik - [project2]-panel` |
+| `Keycloak Admin - [server]` | `ADMIN Keycloak - [server]-panel` |
 
 ### Container Registry Credentials
 
 | Before | After |
 |--------|-------|
-| `ghcr-tangoatlas` | `SVC GitHub - tangoatlas-registry` |
-| `tangoatlas-github-cd` | `SVC GitHub - tangoatlas-cd-deploy` |
+| `ghcr-[yourapp]` | `SVC GitHub - [yourapp]-registry` |
+| `[yourapp]-github-cd` | `SVC GitHub - [yourapp]-cd-deploy` |
 
 ## Migration Checklist
 
@@ -167,21 +168,18 @@ All AWS IAM service accounts follow consistent pattern:
 
 ## Scripts/Automation Impact
 
-Items referenced in code that will need updates:
+Items referenced in code that will need updates after renaming:
 
-1. **`load-secrets-from-op.sh`** → References "TangoAtlas Development"
-   - Update to: `APP TangoAtlas - django-dev`
+1. **Shell scripts** that load secrets by name (e.g., `load-secrets-from-op.sh`)
+   - Update item name references to match the new convention
 
-2. **`setup-1password-secrets.sh`** → Creates "TangoAtlas Development"
-   - Update to: `APP TangoAtlas - django-dev`
-
-3. **Ansible playbooks** → May reference:
-   - `id.tangoatlas.org - token for ansible` → `SVC Authentik - ansible-automation-token`
+2. **Ansible playbooks** → May reference:
+   - `<domain> - token for ansible` → `SVC Authentik - ansible-automation-token`
    - `Ansible Vault` → `VAULT Ansible - encryption-key`
 
-4. **GitHub Actions** → May reference:
-   - `tangoatlas-github-cd` → `SVC GitHub - tangoatlas-cd-deploy`
-   - `ghcr-tangoatlas` → `SVC GitHub - tangoatlas-registry`
+3. **GitHub Actions** → May reference:
+   - `[yourapp]-github-cd` → `SVC GitHub - [yourapp]-cd-deploy`
+   - `ghcr-[yourapp]` → `SVC GitHub - [yourapp]-registry`
 
 ## Benefits of New Convention
 

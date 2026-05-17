@@ -1,7 +1,6 @@
 ---
-description: "Run browser-based tests against any TMD environment — smoke tests, regression checks, UI verification, REST endpoint probing, and accessibility audits. Uses Playwright-backed browser tools to navigate, interact, screenshot, and report."
-author: danieldekay
-argument-hint: "Describe what to test. Examples: 'smoke test the events archive page', 'verify login redirect on admin panel', 'check REST endpoint /wp-json/tmd/v3/events returns 200', 'regression test after CSS deploy to staging'."
+description: "Run browser-based tests against any web application — smoke tests, regression checks, UI verification, REST endpoint probing, and accessibility audits. Uses Playwright-backed browser tools to navigate, interact, screenshot, and report."
+argument-hint: "Describe what to test and the base URL. Examples: 'smoke test https://myapp.example.com', 'verify login redirect on admin panel', 'check REST endpoint /api/v1/items returns 200', 'regression test after CSS deploy to staging'."
 tools:
   [
     browser/openBrowserPage,
@@ -50,13 +49,14 @@ You **MUST** consider the user input before proceeding (if not empty). The user 
 
 ## Environment Reference
 
-| Environment          | URL                                | Notes                                  |
-|----------------------|------------------------------------|----------------------------------------|
-| **Local dev**        | `http://localhost:10014`           | via Local.app, requires WP CLI session |
-| **Frontend pages**   | `/events`, `/djs`, `/event-series` | Genesis + Bootstrap 4 templates        |
-| **REST API**         | `/wp-json/tmd/v3/`                 | Current version                        |
-| **WP Admin**         | `/wp-admin/`                       | Admin UI, React-embedded tools         |
-| **Admin menu pages** | `/wp-admin/admin.php?page=tmd-*`   | TMD-specific admin pages               |
+Configure your project's environments by setting the base URL in `$ARGUMENTS`. The table below shows examples for common setups — adapt paths to match your application.
+
+| Environment          | URL                                | Notes                                         |
+|----------------------|------------------------------------|-----------------------------------------------|
+| **Local dev**        | `http://localhost:<port>`          | Replace `<port>` with your dev server port    |
+| **Frontend pages**   | `/`, `/about`, `/products`         | Adjust to your app's routes                   |
+| **REST API**         | `/api/v1/`                         | Adjust to your API base path                  |
+| **Admin UI**         | `/admin/`                          | Adjust to your admin panel path               |
 
 ## Testing Modes
 
@@ -100,7 +100,7 @@ For API endpoint verification:
 
 ```javascript
 // Example Playwright assertion for REST endpoint
-const response = await page.request.get('http://localhost:10014/wp-json/tmd/v3/events');
+const response = await page.request.get('http://localhost:3000/api/v1/items');
 expect(response.status()).toBe(200);
 const body = await response.json();
 expect(body).toHaveProperty('data');
@@ -112,7 +112,7 @@ Use `browser/runPlaywrightCode` to run such assertions.
 
 For admin-panel flows (requires authentication):
 
-1. Navigate to `http://localhost:10014/wp-login.php`.
+1. Navigate to your application's login URL (e.g., `http://localhost:3000/login`).
 2. Fill credentials with `browser/typeInPage`.
 3. Submit login form.
 4. Verify redirect to `/wp-admin/`.
