@@ -227,6 +227,51 @@ Store as `INSTALL_SCOPE` and `CONFIRM_INSTALLS`. Reference these throughout all 
 
 ---
 
+### 0.7 — Python Workspace Scaffold (when Python is in scope)
+
+Ask this when `USE_CASE` involves Python (Data Science, AI Development, or General with Python selected):
+
+```
+vscode_askQuestions([
+  {
+    header: "Python project manager",
+    question: "Which tool should manage the Python environment and project?",
+    message: "uv is the fastest modern choice and replaces pip/venv/pip-tools in one binary. hatch is ideal for publishable packages following PEP 517/518.",
+    options: [
+      { label: "uv", description: "Astral's uv — fast, modern, replaces pip/venv/pip-tools", recommended: true },
+      { label: "hatch", description: "PEP 517/518-native, great for publishable packages" },
+      { label: "poetry", description: "Classic lock-file dependency management" },
+      { label: "venv + pip", description: "Minimal stdlib approach, no extra tooling" },
+      { label: "Skip — environment already set up" }
+    ],
+    allowFreeformInput: false
+  },
+  {
+    header: "Scaffold workspace files",
+    question: "Which workspace files should be created for the project?",
+    message: "These establish a standard, reproducible project structure for VS Code.",
+    options: [
+      { label: "All (README, .code-workspace, .vscode/)", description: "Full scaffold — recommended for new projects", recommended: true },
+      { label: "README.md only" },
+      { label: ".code-workspace only" },
+      { label: ".vscode/ only (settings, extensions, mcp)" },
+      { label: "Skip — I'll manage structure manually" }
+    ],
+    multiSelect: true,
+    allowFreeformInput: false
+  },
+  {
+    header: "Project name",
+    question: "What is the project / workspace name? (used for .code-workspace filename and README title)",
+    allowFreeformInput: true
+  }
+])
+```
+
+Store as `PYTHON_PM`, `SCAFFOLD_FILES`, and `PROJECT_NAME`.
+
+---
+
 ## Phase 1 — Diagnose
 
 Run the appropriate diagnostic script for the OS. If the OS is already known, skip to Phase 2.
@@ -516,6 +561,343 @@ Suggest relevant APM search terms based on `USE_CASE` from Phase 0:
 
 ---
 
+## Phase 4c — Python Workspace Scaffold
+
+Run this phase when `PYTHON_PM` and/or `SCAFFOLD_FILES` were set in Phase 0.7. It creates a minimal, correctly structured Python project with a managed virtual environment and standard VS Code workspace files.
+
+---
+
+### 4c.1 — Install Python Project Manager
+
+#### uv (recommended)
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# macOS (Homebrew alternative)
+brew install uv
+
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Windows (winget)
+winget install --id astral-sh.uv -e
+
+# Verify
+uv --version
+```
+
+#### hatch
+
+```bash
+# Via pip (works everywhere; consider pipx for isolation)
+pip install hatch
+# or: pipx install hatch
+
+# macOS (Homebrew)
+brew install hatch
+
+# If uv is already installed — cleanest option
+uv tool install hatch
+
+# Verify
+hatch --version
+```
+
+#### poetry
+
+```bash
+# Official installer (macOS / Linux)
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Windows (PowerShell)
+(Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
+
+# Verify
+poetry --version
+```
+
+---
+
+### 4c.2 — Initialise the Project
+
+Replace `<project-name>` with `PROJECT_NAME` from Phase 0.7.
+
+#### uv
+
+```bash
+# New project (creates <project-name>/ directory with pyproject.toml + src layout)
+uv init <project-name>
+cd <project-name>
+
+# Add a scripts/ directory for helper scripts (not created by default)
+mkdir -p scripts
+
+# Add core dev tools (linter, formatter, test runner)
+uv add --dev ruff pytest pytest-cov
+
+# Create the virtual environment and install all deps
+uv sync
+```
+
+`pyproject.toml` additions for helper scripts and ruff:
+
+```toml
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+```
+
+#### hatch
+
+```bash
+# New project
+hatch new <project-name>
+cd <project-name>
+
+# Add scripts/ directory
+mkdir -p scripts
+
+# hatch uses pyproject.toml environments — no separate lock file by default
+hatch env create
+```
+
+Add to `pyproject.toml` to keep the venv in `.venv/` (required for VS Code interpreter auto-detection):
+
+```toml
+[tool.hatch.envs.default]
+type = "virtual"
+path = ".venv"
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args}"
+lint = "ruff check {args:.}"
+fmt = "ruff format {args:.}"
+```
+
+---
+
+### 4c.3 — Scaffold Workspace Files
+
+Create all selected files from `SCAFFOLD_FILES`. Substitute `PROJECT_NAME` everywhere shown.
+
+---
+
+#### README.md
+
+```markdown
+# <PROJECT_NAME>
+
+> Short description of the project.
+
+## Requirements
+
+- Python ≥ 3.10
+- [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
+
+## Setup
+
+```bash
+# Install dependencies and create virtual environment
+uv sync
+```
+
+## Development
+
+```bash
+# Run tests
+uv run pytest
+
+# Lint
+uv run ruff check .
+
+# Format
+uv run ruff format .
+
+# Run a helper script
+uv run python scripts/<script>.py
+```
+
+## Project Structure
+
+```
+<PROJECT_NAME>/
+├── src/
+│   └── <package>/
+│       └── __init__.py
+├── tests/
+│   └── __init__.py
+├── scripts/          # helper and automation scripts
+├── .vscode/
+│   ├── settings.json
+│   ├── extensions.json
+│   └── mcp.json
+├── <PROJECT_NAME>.code-workspace
+├── pyproject.toml
+├── uv.lock           # (uv) or pyproject.toml lock section (hatch/poetry)
+└── README.md
+```
+
+## License
+
+MIT
+```
+
+---
+
+#### `<PROJECT_NAME>.code-workspace`
+
+```json
+{
+  "folders": [
+    { "path": "." }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "charliermarsh.ruff",
+      "ms-python.debugpy",
+      "tamasfe.even-better-toml",
+      "GitHub.copilot",
+      "GitHub.copilot-chat"
+    ]
+  }
+}
+```
+
+> **Windows note**: Change the interpreter path to `${workspaceFolder}/.venv/Scripts/python.exe`.
+
+---
+
+#### `.vscode/settings.json`
+
+```json
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "editor.formatOnSave": true,
+  "editor.rulers": [88],
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["tests"],
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/*.pyc": true,
+    ".venv": true
+  },
+  "search.exclude": {
+    ".venv": true,
+    "uv.lock": true
+  }
+}
+```
+
+---
+
+#### `.vscode/extensions.json`
+
+```json
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "charliermarsh.ruff",
+    "ms-python.debugpy",
+    "tamasfe.even-better-toml",
+    "redhat.vscode-yaml",
+    "GitHub.copilot",
+    "GitHub.copilot-chat"
+  ]
+}
+```
+
+---
+
+#### `.vscode/mcp.json`
+
+```json
+{
+  "servers": {}
+}
+```
+
+> `mcp.json` is the VS Code MCP server registry file. Populate it with any MCP servers the project needs. Each entry follows the format:
+>
+> ```json
+> "server-name": {
+>   "type": "stdio",
+>   "command": "npx",
+>   "args": ["-y", "@some/mcp-server"]
+> }
+> ```
+>
+> Ask the user which MCP servers (if any) should be pre-configured. Common choices: filesystem, memory, github, playwright.
+
+---
+
+### 4c.4 — .gitignore
+
+Add Python + venv entries if a `.gitignore` does not already exist:
+
+```bash
+# macOS / Linux
+cat >> .gitignore << 'EOF'
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+.env
+.env.*
+EOF
+
+# Or use uv's built-in (creates a minimal .gitignore on uv init)
+```
+
+---
+
+### 4c.5 — Verify Python Environment
+
+```bash
+# Confirm interpreter resolves to the project .venv
+uv run python --version          # uv
+hatch run python --version       # hatch
+
+# Confirm ruff and pytest are available
+uv run ruff --version
+uv run pytest --version
+
+# Run tests (should pass with empty test suite)
+uv run pytest
+```
+
+Open the project in VS Code and confirm the status bar shows `.venv` as the active interpreter. If not, press `Ctrl+Shift+P` → **Python: Select Interpreter** → choose `.venv`.
+
+---
+
 ## Phase 5 — Verify
 
 After all installs, run the diagnostic script again to confirm all tools are present and on the expected versions:
@@ -546,6 +928,7 @@ Expected passing state:
 ```
 Start
  └─ Phase 0: Interview user (use case, languages, reporting, install scope)
+     ├─ 0.7: Python in scope? → ask project manager (uv/hatch/poetry/venv) + scaffold files
      └─ Phase 1: Detect OS + run diagnostic
          └─ Phase 2: Check permissions → user-scoped install if not admin
              └─ Phase 3: Detect package manager
@@ -554,7 +937,16 @@ Start
                      ├─ Linux?  apt/dnf/pacman → system pkg; snap for VS Code
                      └─ Windows? winget (built-in Win11) → choco → scoop → manual
                          └─ Phase 4b: Install APM (npm install -g @microsoft/apm)
-                             └─ Guide user to awesome-copilot / skills.sh for skill packs
+                             ├─ Guide user to awesome-copilot / skills.sh for skill packs
+                             └─ Phase 4c: Python Workspace Scaffold (when Python in scope)
+                                 ├─ Install uv / hatch / poetry
+                                 ├─ uv init / hatch new → pyproject.toml + .venv
+                                 ├─ mkdir scripts/   ← helper scripts live here
+                                 ├─ Create README.md
+                                 ├─ Create <project>.code-workspace
+                                 ├─ Create .vscode/settings.json  (interpreter + ruff)
+                                 ├─ Create .vscode/extensions.json
+                                 ├─ Create .vscode/mcp.json       (empty servers map)
                                  └─ Phase 5: Verify all tools + run use-case package install
 ```
 
@@ -570,3 +962,8 @@ Start
 - **R user library**: R automatically creates `~/Library/R/x.y/library` (macOS) or `~/R/x86_64-pc-linux-gnu-library/x.y` (Linux) for user installs — no `sudo` required.
 - **Quarto user install on Linux**: Extract to `~/.local/bin/quarto` and add `~/.local/bin` to `PATH` in `.zshrc` / `.bashrc`.
 - **skills.sh**: If the skills.sh registry is unavailable, fall back to searching GitHub for `apm.yml` files or the `awesome-copilot` repository.
+- **uv vs pip**: `uv` resolves and installs dependencies 10–100× faster than pip. It also manages Python versions (`uv python install 3.12`). Prefer it for all new Python projects.
+- **hatch `.venv` path**: By default hatch stores environments globally (`~/.local/share/hatch/env/`). Set `[tool.hatch.envs.default] type = "virtual" / path = ".venv"` in `pyproject.toml` so VS Code can auto-detect the interpreter.
+- **Windows interpreter path**: In `.vscode/settings.json` and `.code-workspace`, change `.venv/bin/python` to `.venv/Scripts/python.exe`.
+- **`scripts/` directory**: Always create it even if empty — it signals to contributors where helper/automation scripts live. Add a brief comment in `README.md` explaining its purpose.
+- **`.vscode/mcp.json`**: This file is read by VS Code to register MCP servers for the workspace. Keep it under source control so all contributors share the same MCP configuration.
