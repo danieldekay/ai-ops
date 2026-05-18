@@ -1,6 +1,19 @@
 ---
 name: copilot-control-plane-architecture
-description: 'Build, review, refactor, and operationalize a GitHub Copilot customization control plane in a repository. Use when users ask how `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md`, `.github/prompts/*.prompt.md`, `.github/agents/*.agent.md`, and `.github/workflows/*.yml` should interact, or when they ask to create/update these files directly (for example: “create a new agent”, “save this as prompt”, “add scoped instructions”, “add a governance workflow”, "create new prompt", "create new instructions file", "edit prompt", "edit instructions file").'
+description: >
+  Build, review, refactor, and operationalize a GitHub Copilot customization
+  control plane in a repository. Use when users ask how
+  `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md`,
+  `.github/prompts/*.prompt.md`, `.github/agents/*.agent.md`, and
+  `.github/workflows/*.yml` should interact, or when they ask to create or
+  update these files directly (for example: "create a new agent", "save this
+  as prompt", "add scoped instructions", "add a governance workflow", "create
+  new prompt", "create new instructions file", "edit prompt", "edit
+  instructions file").
+author: Daniel Kaesmayr
+metadata:
+  version: "1.0.0"
+  category: governance
 ---
 
 # Copilot Control Plane Architecture

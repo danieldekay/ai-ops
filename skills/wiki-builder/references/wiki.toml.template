@@ -1,0 +1,95 @@
+# wiki.toml — machine-readable config for this wiki
+# Agent reads this FIRST before any action.
+# Edit to override wiki-builder skill defaults.
+# Missing keys fall back to the skill's built-in values.
+#
+# ADOPTING AN EXISTING FOLDER?
+#   Uncomment and fill in [structure.paths] below to remap the standard layout
+#   to whatever structure already exists. The agent will use your paths instead
+#   of the defaults. You only need to specify keys that differ from the defaults.
+
+[meta]
+title   = "WIKI_TITLE"
+slug    = "WIKI_SLUG"
+flavor  = "WIKI_FLAVOR"   # research | paper | domain | product | person | organization | project | meeting-series | regulatory
+created = "WIKI_DATE"
+
+# ---------------------------------------------------------------------------
+# Structure — controls wiki/ subfolder layout and index grouping.
+# Override page_types to add or remove page categories for this topic.
+# Agent creates wiki/<page_type>/ for each entry and groups index.md accordingly.
+# ---------------------------------------------------------------------------
+[structure]
+page_types     = ["concepts", "papers", "tools", "people"]  # edit for your flavor
+index_grouping = "page_type"  # "page_type" | "date" | "alphabetical"
+
+# ---------------------------------------------------------------------------
+# Structure.paths — remap the default layout to an existing folder structure.
+# Use this section ONLY when adopting a folder not created by init_wiki.sh.
+# Paths are relative to the folder where wiki.toml lives.
+# Omit any key whose path matches the default.
+# ---------------------------------------------------------------------------
+# [structure.paths]
+# raw       = "raw"              # default: raw/
+# wiki      = "wiki"             # default: wiki/
+# index     = "wiki/index.md"    # default: wiki/index.md
+# questions = "wiki/questions"   # default: wiki/questions/
+# derived   = "derived"          # default: derived/
+# sources   = "sources.md"       # default: sources.md
+# logs      = "logs"             # default: logs/
+# log_file  = "logs/log.md"      # default: logs/log.md
+
+# ---------------------------------------------------------------------------
+# Ingest — controls how the agent integrates a new source into the wiki.
+# ---------------------------------------------------------------------------
+[ingest]
+max_integration_pages  = 15    # max existing pages one source may update
+contradiction_detection = true  # flag ⚠️ Contradiction: markers during ingest
+append_to_log          = true  # always append ## [date] ingest | title to logs/log.md
+
+# ---------------------------------------------------------------------------
+# Lint — controls the maintenance pass thresholds and which checks are active.
+# Remove a check name from the list to disable that check.
+# ---------------------------------------------------------------------------
+[lint]
+min_claims_per_page  = 3   # pages with fewer claims are flagged as "thin"
+maintenance_interval = 10  # suggest lint after every N new pages
+
+checks = [
+  "thin_pages",
+  "missing_backlinks",
+  "uncompiled_raw",
+  "orphaned_questions",
+  "unsourced_claims",
+  "unresolved_contradictions",
+  "stale_claims",
+]
+
+# ---------------------------------------------------------------------------
+# Provenance — controls claim attribution and contradiction markers.
+# Change inference_marker if you prefer a different convention.
+# ---------------------------------------------------------------------------
+[provenance]
+require_attribution  = true
+inference_marker     = "[inferred]"
+contradiction_marker = "⚠️ Contradiction:"
+
+# ---------------------------------------------------------------------------
+# ZK — zettelkasten-mcp integration.
+# Set enabled = true when using this wiki alongside the zettelkasten MCP server.
+# tag_prefix is prepended to every compiled ZK note's tag list (e.g. "wiki-llm-agents").
+#
+# source_tags: pull ZK notes matching ANY of these tags as raw input instead of
+#   (or in addition to) the raw/ folder. Agent runs zk_search_notes for each tag,
+#   deduplicates results, and treats them as the ingest source.
+#   Leave empty ([]) to use only raw/ folder.
+#
+# source_note_types: filter source_tags results to these note types only.
+#   Default is all types. Useful to restrict to ["permanent", "literature"] and
+#   exclude fleeting notes that aren't ready to compile.
+# ---------------------------------------------------------------------------
+[zk]
+enabled           = false
+tag_prefix        = ""
+source_tags       = []   # e.g. ["agentic-dev", "multi-agent"]
+source_note_types = []   # e.g. ["permanent", "literature"] — empty = all types
