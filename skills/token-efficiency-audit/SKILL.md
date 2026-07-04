@@ -1,5 +1,5 @@
 ---
-name: token-efficiency
+name: token-efficiency-audit
 description: 'Audits, scores, and rewrites AI configuration files to maximize token efficiency with zero behavior loss. Use when asked to optimize, compress, or reduce tokens in copilot-instructions.md, AGENTS.md, .github/instructions/*.md, .github/copilot-instructions.md, .github/agents/*.agent.md, skills/*/SKILL.md, or any system prompt / AI instruction file. Runs a 4-phase workflow: inventory → waste detection → rewrite → measure. Triggers on: "reduce tokens", "optimize instructions", "compress prompt", "too verbose", "token budget", "shrink system prompt", "refactor copilot config", "clean up instructions".'
 ---
 
@@ -46,7 +46,7 @@ Audits, scores, and rewrites AI configuration files to eliminate waste and maxim
 | AGENTS.md | 48 | 610 | 1,000 | OK |
 ```
 
-4. Ask the user to confirm scope and priorities before proceeding to rewrite.
+1. Ask the user to confirm scope and priorities before proceeding to rewrite.
 
 ## Phase 2 — Waste Detection
 
@@ -66,6 +66,7 @@ Score each file (1 point per pattern found):
 | 10 | **Changelog in instructions** | Version history or changelog entries inside the file |
 
 **Waste score → action:**
+
 - 0–2: no action needed
 - 3–4: schedule rewrite
 - 5–6: high priority
@@ -78,22 +79,26 @@ Report score and list each pattern with line numbers. **Preserve original intent
 Apply in order. See full examples in [token-efficiency-patterns.md](./references/token-efficiency-patterns.md).
 
 **Quick wins (automated):**
+
 - Strip filler phrases
 - Convert prose enumerations to bullet lists
 - Trim YAML `description` to ≤60 words
 - Delete redundant preambles
 
 **Structural rewrites:**
+
 - Replace paragraph explanations with one imperative rule + one inline example
 - Merge duplicate rules into canonical location; reference from others
 - Use `applyTo` scoping to split catch-all files into narrowly focused files
 
 **Progressive loading refactor:**
+
 - Move rarely-needed content (full examples, troubleshooting tables, large references) to `references/` subfolder
 - Keep main file ≤150 lines / ≤1,500 tokens; link to references
 - Move large workflows (>5 steps) to `references/*.md` per [agent-skills guidelines](../../.github/instructions/agent-skills.instructions.md)
 
 **Iterative polish (from `finalize-agent-prompt` pattern):**
+
 - After rewriting, re-read the file as if you are the AI agent receiving it
 - Check: is every rule still unambiguous? Is intent fully preserved?
 - Make one final pass for spelling, grammar, and clarity without changing meaning
@@ -109,8 +114,8 @@ Apply in order. See full examples in [token-efficiency-patterns.md](./references
 | .github/copilot-instructions.md | 1,840 | 920 | 920 | 50% |
 ```
 
-3. List any trade-offs: content removed, merged rules, coverage gaps.
-4. Commit: `refactor(prompts): reduce token count by XX% — token-efficiency audit`
+1. List any trade-offs: content removed, merged rules, coverage gaps.
+2. Commit: `refactor(prompts): reduce token count by XX% — token-efficiency audit`
 
 ## Token Budget Reference
 
