@@ -11,7 +11,7 @@ A personal collection of AI agent skills, prompts, instructions, and agents for 
 
 Skills are on-demand workflow bundles — loaded when relevant, not always-on. Each skill lives in its own folder with a `SKILL.md` and optional `scripts/`, `references/`, or `templates/` assets.
 
-The active skills here are part of a **global process/methodology layer** — things like `brainstorming` and the navigator skills (`thinking-navigator`, `research-navigator`, etc.) that route to domain-specific skills installed on-demand.
+The active skills here are part of a **global process/methodology layer** — things like `brainstorming` and the navigator skills (`navigator-thinking`, `research-navigator`, etc.) that route to domain-specific skills installed on-demand.
 
 Domain skills (Django, WordPress, frontend, testing, marketing, science, etc.) live in a separate long-tail catalog and are installed per-session only. This keeps the always-loaded global footprint small.
 
@@ -39,24 +39,24 @@ ai-ops/
 | [context-efficiency](skills/context-efficiency/) | Token-efficient context hygiene for AI sessions |
 | [context-map](skills/context-map/) | Generate a relevant-file map before making changes |
 | [copilot-control-plane-architecture](skills/copilot-control-plane-architecture/) | GitHub Copilot architecture guidance |
-| [data-navigator](skills/data-navigator/) | Routes to data analysis and scientific computing skills |
+| [data-navigator](skills/navigator-data/) | Routes to data analysis and scientific computing skills |
 | [deep-research](skills/deep-research/) | Comprehensive multi-source research with synthesis |
-| [devops-navigator](skills/devops-navigator/) | Routes to DevOps, security, and infrastructure skills |
+| [devops-navigator](skills/navigator-devops/) | Routes to DevOps, security, and infrastructure skills |
 | [dk-flavored-spec-kit](skills/dk-flavored-spec-kit/) | Personalized spec-driven development workflow |
 | [dk.v2.deep-research](skills/dk.v2.deep-research/) | Modular deep research pipeline v2 with parallel gather tracks |
-| [frontend-navigator](skills/frontend-navigator/) | Routes to frontend, UI, and design system skills |
+| [frontend-navigator](skills/navigator-frontend/) | Routes to frontend, UI, and design system skills |
 | [information-architecture](skills/information-architecture/) | IA design for clarity and discoverability |
 | [lean-ctx-subagent](skills/lean-ctx-subagent/) | Dispatch subagents via lean-ctx coordination tools |
 | [llm-wiki](skills/llm-wiki/) | Maintain an LLM-queryable project wiki |
 | [project-planning](skills/project-planning/) | Project planning and task decomposition |
 | [raindrop](skills/raindrop/) | Save and retrieve bookmarks via Raindrop.io |
 | [refactor-plan](skills/refactor-plan/) | Plan multi-file refactors with impact analysis before coding |
-| [research-navigator](skills/research-navigator/) | Routes to research and information-gathering skills |
+| [research-navigator](skills/navigator-research/) | Routes to research and information-gathering skills |
 | [skill-management](skills/skill-management/) | Manage AI agent skills across harnesses using APM |
-| [testing-navigator](skills/testing-navigator/) | Routes to testing and quality assurance skills |
+| [testing-navigator](skills/navigator-testing/) | Routes to testing and quality assurance skills |
 | [thinking-frameworks](skills/thinking-frameworks/) | Structured thinking patterns for agent self-reflection |
-| [thinking-navigator](skills/thinking-navigator/) | Routes to reasoning and analytical thinking skills |
-| [writing-navigator](skills/writing-navigator/) | Routes to writing and communication skills |
+| [thinking-navigator](skills/navigator-thinking/) | Routes to reasoning and analytical thinking skills |
+| [writing-navigator](skills/navigator-writing/) | Routes to writing and communication skills |
 | [zettelkasten](skills/zettelkasten/) | Zettelkasten knowledge management workflow |
 | [zettelkasten-mcp](skills/zettelkasten-mcp/) | Zettelkasten via MCP tools |
 | [zettelkasten-orchestrator](skills/zettelkasten-orchestrator/) | Orchestrate Zettelkasten workflows at scale |
@@ -76,7 +76,7 @@ Skills in [`_archive/skills/`](_archive/skills/) are retired but preserved in gi
 
 ```bash
 # Install a skill globally
-apm install -g danieldekay/ai-ops/skills/thinking-navigator/
+apm install -g danieldekay/ai-ops/skills/navigator-thinking/
 
 # Install temporarily for a session, uninstall after
 apm install -g danieldekay/ai-ops/skills/deep-research/
