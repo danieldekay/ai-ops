@@ -87,6 +87,21 @@ For full post-type templates, use [structural-templates.md](./references/structu
 
 For deeper voice fingerprints, use [style-analysis.md](./references/style-analysis.md).
 
+## Technical Essay Discipline
+
+Rules for long-form technical pieces, distilled from a structured critique (2026-10-01) of "how-this-blog-gets-built":
+
+- **Essay, not stack tour.** The reader cares about how the work is done, not every clever thing in the system. Aim for: principle → architectural choice → example. Tool → tool → principle is the failure mode.
+- **A tool earns main text only if understanding it changes understanding of the system.** Everything else goes to a footnote, diagram, or its own post. Every proper noun is a cognitive tax.
+- **Don't merely tell what the machine does — tell what decision was made and why.** Flat documentation is the flattest writing; choice plus argument is the distinctive mode.
+- **State the durable principle before the names that implement it.** "The models keep changing. The architecture doesn't." Model names age; rules don't.
+- **Don't feed the completion instinct.** Mention and move on; give readers credit. If a diagram just showed the sequence, don't narrate every node again.
+- **State each point once.** Restating the thesis ("humans still decide") weakens it with repetition.
+- **One metaphorical universe per piece.** workshop/foreman/crew/gate OR brains/elves — not both. Callbacks beat first-occurrence quirks; introduce a metaphor when it carries a point, not before.
+- **No absolute claims about blast radius.** "The worst an agent can do is X" gets challenged. Say precisely what is configured: "Under this pipeline, an agent cannot publish without approval."
+- **End on the intellectual question, not the stale engagement question.** "Does it read human?" is aging out; ask where authorship lies, or where the distinction breaks.
+- **Respect asymmetry.** Neat explanatory sections in complete taxonomies read machine-produced; human essays tolerate lopsided sections. Over-optimizing texture is the danger, not roughness.
+
 ## Evidence Rules
 
 - Every factual claim must be defensible with a source.
@@ -104,6 +119,7 @@ For deeper voice fingerprints, use [style-analysis.md](./references/style-analys
 - Has enough structure to stay readable.
 - Ends with agency, invitation, or a realistic next step.
 - Every factual claim is sourced or clearly framed as experience.
+- Is this a guided tour of the stack or an essay about how the work is done? Cut until the principles are foreground.
 
 ## References
 
