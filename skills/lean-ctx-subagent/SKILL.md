@@ -1,294 +1,113 @@
 ---
 name: lean-ctx-subagent
 description: >
-  Dispatch subagents using lean-ctx multi-agent coordination tools (ctx_agent, ctx_share,
-  ctx_compile, ctx_handoff, ctx_task). Use when delegating tasks to subagents in a
-  lean-ctx-enabled session — replaces raw runSubagent with context-efficient dispatch
-  that shares cached file contexts, persists session state, and enables agent handoff.
-  Triggers: "dispatch subagent", "delegate to agent", "spawn agent", "multi-agent",
-  "parallel agents", "agent handoff", "subagent with context", "ctx_agent", "ctx_share".
+  Dispatch subagents with an evidence-based lean-ctx session start: parent-curated
+  brief in the prompt + CLI-only child discipline. Use when delegating tasks to
+  subagents in a lean-ctx-enabled session — replaces raw dispatch with context
+  that targets what the child actually needs. Triggers: "dispatch subagent",
+  "delegate to agent", "spawn agent", "parallel agents", "subagent context",
+  "session start for subagent".
 author: Daniel Kaesmayr
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   category: dev
+  evidence: measured on tangoatlas 2026-09-27 (lean-ctx 3.10.4)
 ---
 
-# LeanCTX Subagent Dispatch
+# LeanCTX Subagent Dispatch (v2 — measured)
 
-Dispatch subagents with lean-ctx multi-agent coordination. Replaces raw `runSubagent` with context sharing, session persistence, and structured handoff.
+Subagents in the Pi harness get **no `ctx_*` MCP tools** and **no `lean_ctx` tool** —
+CLI only. The harness (`subagent` tool, `runs.run`/`runs.all`) owns orchestration;
+lean-ctx owns context + state. Coordination tools (`ctx_agent`, `ctx_task`,
+`ctx_workflow`, `ctx_share`, `ctx_handoff`) are hidden local-compat substrate —
+do not build dispatch on them.
 
-**Why:** Raw subagents inherit zero context. lean-ctx lets you push cached file contexts, register agents in a shared diary, and hand off tasks with minimal token overhead.
+## Measured ground truth (2026-09-27, do not re-litigate without new evidence)
 
-## When to Use
+| Claim | Result |
+|---|---|
+| Child gets global constitution | ✅ via AGENTS.md injection |
+| Child gets MCP ctx_* tools | ❌ never; CLI only |
+| `lean-ctx session task` in child | ⚠️ works BUT overwrites the parent's shared session.task |
+| CLI `lean-ctx overview` | ❌ dumb file tree (~15–18K tok), no task filter, no briefing, no pack merge |
+| MCP `ctx_overview(task)` (parent) | ✅ task-filtered, ~1.5K tok, facts+hotspots+briefing |
+| `lean-ctx knowledge recall` in child | ⚠️ works, but store is diary noise; curated facts live in the wiki |
+| ctx_pack auto-load → overview merge | ❌ zero effect observed (CLI or MCP) |
+| CLI pack/install commands | ❌ do not exist; ctxpkg is MCP-only (`ctx_pack`) |
+| CLI `handoff`/`share`/`agent` commands | ❌ do not exist |
+| Brief-fed child vs bare-bootstrap child | ✅ same correct answer, fewer discovery steps, self-corrects a wrong brief with one targeted grep |
 
-| Scenario | Use |
-|----------|-----|
-| Delegate implementation task to subagent | ✅ This skill |
-| Parallel independent tasks | ✅ Dispatch multiple agents |
-| Task needs project context files | ✅ `ctx_share` pushes cached reads |
-| Long-running multi-step work | ✅ `ctx_session` persists across turns |
-| Switching between agent roles | ✅ `ctx_agent action=handoff` |
-| No lean-ctx MCP tools available | ❌ Use `subagent-driven-development` instead |
+## The dispatch recipe
 
-## Pre-Flight: Check lean-ctx Availability
+### 1. Parent: curate the brief (before spawning)
 
-```dot
-"lean-ctx MCP tools available?" -> "Use this skill" [label="yes"]
-                          -> "Use subagent-driven-development" [label="no"]
-```
+Run `ctx_overview(task)` and/or `ctx_compose(task)` yourself — you have the MCP
+tools and they are 10× cheaper than the child's CLI equivalents. Extract:
 
-If `ctx_agent`, `ctx_share`, `ctx_compile` are not callable, fall back to `superpowers:subagent-driven-development`.
+- 2–4 vetted file paths (verify they exist and are the RIGHT ones — a wrong brief
+  costs the child one targeted grep, not a fail)
+- one targeted search hint (exact symbol/regex, scoped path)
+- the quality-gate or verification command, if the task mutates code
 
-## The Dispatch Workflow
-
-### 1. Register the Agent (once per session)
-
-```text
-ctx_agent action=register
-  name="implementer"
-  role="Implementation agent for Task N"
-  task="What this agent is working on"
-```
-
-Registers the agent in the shared multi-agent registry. Other agents can see active agents via `ctx_agent action=list`.
-
-### 2. Build Context Package
-
-```text
-ctx_compile
-  task="Task description for subagent"
-  paths=["src/foo.py", "src/bar.py"]
-  budget=4000
-```
-
-Knapsack+Boltzmann minimal context package. Selects the most relevant files and compresses them into a token-budgeted package. Returns a `.ctxpkg` handle.
-
-**Alternative:** If you've already read files via `ctx_read`, use `ctx_share` to push cached contexts directly:
-
-```text
-ctx_share action=push
-  agent="implementer"
-  paths=["src/foo.py", "src/bar.py"]
-```
-
-Pushes cached file contexts to the target agent. The subagent receives them via `ctx_share action=pull` — zero re-read cost.
-
-### 3. Dispatch the Subagent
-
-Use `runSubagent` with a prompt that includes lean-ctx bootstrap instructions:
+### 2. Child prompt template
 
 ```
-Subagent (general-purpose):
-  description: "Implement Task N: [name]"
-  prompt: |
-    You are a lean-ctx subagent. Bootstrap before starting work.
+Task: <one-paragraph task>
 
-    ## Bootstrap (run in order)
-    1. ctx_agent action=register name="<your-role>" task="<task>"
-    2. ctx_share action=pull — receive shared context from parent
-    3. ctx_session action=load — restore session state
-    4. ctx_knowledge action=wakeup — surface prior findings
+Pre-vetted file list from the parent (start here, do not explore widely):
+- <path1>
+- <path2>
+If none fit, search narrowly (grep <exact symbol> in <scoped path>) before widening.
 
-    ## Task
-    [Full task description]
-
-    ## Context Package
-    .ctxpkg handle: [handle from ctx_compile]
-    OR shared files: [list of paths pushed via ctx_share]
-
-    ## Rules
-    - Use ctx_read (not Read), ctx_shell (not Bash), ctx_search (not Grep)
-    - Record findings: ctx_session action=finding value="..."
-    - Record decisions: ctx_session action=decision value="..."
-    - On completion: ctx_session action=save
-    - On handoff: ctx_agent action=handoff target="<next-agent>" summary="..."
-    - **Verify your own work** — run the quality gate tool before reporting DONE
-    - **Check for collateral damage** — search for other imports of moved/deleted symbols
-    - **Never claim success without running the tool** — "I think it passes" is not evidence
+CLI discipline (you have no MCP ctx_* tools):
+- cd to the project root first — CLI writes bind to the daemon session root, not cwd
+- Do NOT run `lean-ctx session task` — the parent owns session.task
+- Reads: lean-ctx read <file> [-m map|signatures|lines:N-M]; full only for edit prep
+- Shell: lean-ctx -c "<cmd>"; exact output: lean-ctx raw "<cmd>"
+- Search: lean-ctx grep <pattern> <path>
+- Report findings for parallel siblings: lean-ctx knowledge remember "<finding>" (short-term only)
+- Durable conclusions: report them back in your output — the parent files them in the wiki
+Verify your own work — run the gate tool before reporting DONE.
 ```
 
-### 4. Monitor & Coordinate
+### 3. Parent: verify
 
-```text
-ctx_agent action=list           # See active agents + their tasks
-ctx_agent action=diary agent="implementer"  # Read agent's diary entries
-ctx_session action=status       # Check session state
-```
+Subagent claims are not evidence. Re-run the gate tool yourself (`ruff`,
+`basedpyright`, `pytest --co`), check `git diff` for scope creep and over-deletion,
+and grep for references to any moved/deleted symbol.
 
-### 5. Handoff / Completion
+## Memory routing
 
-When the subagent finishes:
+- **Long-term/durable → LLM wiki**: parent files child findings via `wiki_observe`
+  / `wiki_retro`. Never `ctx_knowledge`.
+- **Short-term, session/feature-scoped, parallel-agent exchange → `ctx_knowledge`**:
+  children may `lean-ctx knowledge remember` intermediate findings for siblings and
+  the parent to recall. Treat as ephemeral — it decays and gets polluted.
+- **Session state → `ctx_session`/`lean-ctx session`**: parent-owned. Children only
+  append `finding`/`decision` values if instructed, never `task`.
 
-```text
-ctx_agent action=handoff
-  from="implementer"
-  to="reviewer"
-  summary="Task N complete. Changes in src/foo.py. Tests pass."
-```
+## Context packages (ctx_pack) — current status
 
-Or for the final agent:
+`ctx_pack` (MCP-only) creates versioned `.ctxpkg` packages from the live knowledge
+store. Measured caveats: silently embeds the full knowledge graph even when the
+graph layer is not requested (summary said "Graph nodes: 0", file had 26,874
+nodes); auto-load has no observable effect on `overview`; no CLI install path for
+children. **Do not use as the subagent session-start mechanism** until the export
+is scoped and a real consumption path exists. If a portable handoff is needed,
+write a markdown brief file and pass its path in the child prompt.
 
-```text
-ctx_session action=decision value="Task N complete. Next: Task N+1."
-ctx_knowledge action=remember content="Non-obvious finding from this task"
-ctx_gain                          # Check savings
-```
+## Anti-patterns (all measured)
 
-## Context Sharing Patterns
-
-### Pattern A: Pre-read + Push (recommended)
-
-Parent reads files via `ctx_read` (cached), then pushes to subagent:
-
-```
-Parent:  ctx_read path="src/foo.py" mode=full     # cached
-         ctx_share action=push agent="impl" paths=["src/foo.py"]
-
-Subagent: ctx_share action=pull                    # receives cached context, ~13 tok
-```
-
-### Pattern B: Compile Package
-
-Parent builds a minimal context package:
-
-```
-Parent:  ctx_compile task="Fix auth bug" paths=["src/auth.py", "src/middleware.py"] budget=3000
-
-Subagent: [include .ctxpkg handle in prompt]
-          ctx_read path="src/auth.py" mode=full    # loads from package
-```
-
-### Pattern C: Knowledge Transfer
-
-Cross-agent knowledge without re-reading:
-
-```
-Agent 1:  ctx_knowledge action=remember content="Auth uses RS256, key at secrets/jwt.pub"
-
-Agent 2:  ctx_knowledge action=recall query="auth JWT"   # surfaces Agent 1's finding
-```
-
-## Session Persistence Across Turns
-
-Subagents operate in their own session. To persist state across multiple turns of coordination:
-
-```text
-# At end of each turn:
-ctx_session action=save
-
-# At start of next turn:
-ctx_session action=load
-ctx_session action=status   # See what was happening
-```
-
-## Parallel Dispatch
-
-For independent tasks, dispatch multiple agents in one turn:
-
-```
-Turn 1:
-  runSubagent(prompt="... Agent A ...") +
-  runSubagent(prompt="... Agent B ...")
-
-Turn 2:
-  ctx_agent action=diary agent="A"
-  ctx_agent action=diary agent="B"
-  [coordinate based on diary entries]
-```
-
-## Token Savings
-
-| Operation | Raw runSubagent | lean-ctx dispatch |
-|-----------|-----------------|-------------------|
-| Share 5 files | Re-read in subagent (~5K tok) | `ctx_share` push/pull (~65 tok) |
-| Session state | Re-explain (~2K tok) | `ctx_session load` (~400 tok) |
-| Cross-agent knowledge | Re-discover or re-read | `ctx_knowledge recall` (~200 tok) |
-| Handoff | Full summary prose | `ctx_agent handoff` (~150 tok) |
-
-## Trust-but-Verify: Mandatory Validation
-
-**Subagent claims are NOT evidence.** Always verify their work before marking tasks complete.
-
-### After Each Subagent Completes
-
-1. **Run the quality gates yourself** — don't trust the subagent's claim of "0 errors" or "all pass"
-2. **Check the actual files changed** — `git diff HEAD` to see what was modified
-3. **Verify the specific tool the subagent claimed to fix** — if they said "ruff passes", run `uv run ruff check` yourself
-4. **Look for collateral damage** — subagents may fix their task but break adjacent code
-
-### Common Subagent Failure Modes
-
-| Failure | Symptom | Prevention |
-|---------|---------|------------|
-| False "DONE" | Tool still reports errors after subagent claims success | Always re-run the tool |
-| Partial fix | Some violations fixed, others remain | Check full tool output, not just subagent summary |
-| Over-deletion | Removes code that was actually used | Check git diff for removed imports/functions |
-| Stale imports | Fixes one import but misses others | Search for all references to moved/deleted symbols |
-| Scope creep | Changes files outside task scope | Review git diff stat |
-
-### Validation Checklist
-
-```
-□ Run the tool the subagent claimed to fix (ruff, basedpyright, etc.)
-□ Check git diff for unexpected changes
-□ Verify no new import errors introduced
-□ Confirm subagent didn't delete used code
-□ Check adjacent files for breakage
-□ Run test collection on changed test files (--co flag)
-□ Check git log for recent commits that may have caused breakage
-```
-
-### When Validation Finds Issues
-
-**If the subagent's work is incomplete** (e.g., ruff still reports errors):
-- Fix inline if trivial (e.g., `ruff check --fix`)
-- Dispatch a fix subagent with the specific remaining issues
-- Re-validate after fix
-
-**If the subagent's work is wrong** (e.g., deleted used code):
-- Revert the change: `git checkout <file>`
-- Re-dispatch with corrected prompt
-- Flag the failure mode for future reference
-
-**If pre-existing breakage is exposed** (e.g., test collection fails on unrelated import):
-- Check `git log --oneline -S "symbol" -- path/` to find when the symbol was removed
-- Determine if the breakage is from the subagent or from prior commits
-- If prior commits: escalate to human with evidence (commit hash + diff)
-- If subagent: fix and re-validate
-
-## Anti-Patterns
-
-- ❌ Dispatching subagent without `ctx_share` or `ctx_compile` — subagent re-reads everything
-- ❌ Subagent uses native Read/Bash/Grep — loses compression savings
-- ❌ No `ctx_session save` — state lost on context compaction
-- ❌ No `ctx_agent register` — invisible to other agents
-- ❌ Parent doesn't check `ctx_agent diary` — misses subagent findings
-- ❌ Trusting subagent "DONE" without running quality gates
-- ❌ Parallel dispatch without sequential validation
-- ❌ Ignoring git diff output after subagent completes
+- ❌ Mandating `lean-ctx overview` in a scoped child task — 15K tok of tree, zero task signal
+- ❌ Child runs `lean-ctx session task` — clobbers the parent's triage signal
+- ❌ Telling a child to call `ctx_share`/`ctx_compile`/`ctx_agent` — tools don't exist there
+- ❌ Building dispatch on ctx_agent/ctx_task/ctx_workflow — hidden Research substrate, disabled
+- ❌ Recording durable facts with `lean-ctx knowledge remember` — store is noise-polluted; use wiki
+- ❌ Running `lean-ctx knowledge consolidate` (or `--all`) after cleaning the knowledge store — it re-imports the session diary as new facts and re-creates the junk (measured: 0 facts → 7 immediately). If a clean is needed, remove items and skip consolidate; never consolidate as a "tidy-up" step.
+- ❌ Trusting "DONE" without re-running the gate tool yourself
 
 ## Fallback
 
-If lean-ctx MCP tools are unavailable, invoke `superpowers:subagent-driven-development` instead.
-
-### Fallback: subagent-driven-development
-
-When lean-ctx is not available:
-
-1. **Create a todo list** — one item per fix
-2. **Dispatch implementer subagents** — one per task (parallel if independent)
-3. **Validate immediately after each subagent** — run quality gates before dispatching the next
-4. **Fix issues found during validation** — dispatch fix subagents or fix inline
-5. **Run final whole-branch review** — after all tasks complete
-
-**Critical difference from lean-ctx path:** No shared context or session persistence. Each subagent starts fresh. Validation is even more important since subagents can't see each other's work.
-
-### Pre-Dispatch Checklist (Fallback)
-
-```
-□ Task is scoped to specific files/symbols
-□ Quality gate command is known (e.g., `uv run ruff check`)
-□ Validation command is known (e.g., `uv run pytest --co`)
-□ Subagent prompt includes exact tool commands to verify success
-□ Subagent prompt warns against over-deletion and scope creep
-```
+No lean-ctx CLI available in the child → same recipe minus the CLI lines: brief in
+prompt, native tools, verify gates yourself. The brief is the mechanism; lean-ctx
+CLI in the child is a compression aid, not the handoff channel.
