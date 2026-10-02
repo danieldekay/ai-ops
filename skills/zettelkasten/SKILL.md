@@ -1,3 +1,8 @@
+---
+name: zettelkasten
+description: Zettelkasten knowledge management via MCP tools — atomic note creation, semantic linking strategies, research integration, permanent notes, knowledge graphs, and validating claims with external sources. Use when creating, linking, or organizing Zettelkasten notes or processing fleeting notes into permanent knowledge.
+---
+
 # Zettelkasten Knowledge Management Skill
 
 ## Overview

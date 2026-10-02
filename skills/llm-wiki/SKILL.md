@@ -9,7 +9,7 @@ description: >
   the wiki and file the answer back, LINT the wiki for health. Integrates with Zettelkasten
   MCP for atomic cross-domain notes, plus web search, Semantic Scholar, and the workspace's
   existing log.md and inbox. Distinct from wiki-builder (which scaffolds wikis) — this skill
-  is the ongoing methodology: how to operate an LLM wiki once it exists.
+  is the ongoing methodology of operating one.
   Use when: "build an LLM wiki on", "ingest this source into my wiki", "query my wiki about",
   "lint my wiki", "set up a wiki for [topic]", "add this to my wiki", "file this answer",
   "wiki is getting stale", "expand my wiki", "start a knowledge base that compounds".
