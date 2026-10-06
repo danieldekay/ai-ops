@@ -33,6 +33,7 @@ ai-ops/
 
 | Skill | Description |
 |-------|-------------|
+| [anvil-beads](skills/anvil-beads/) | Evidence-first coding verification and adversarial review gates on Beads |
 | [brainstorming](skills/brainstorming/) | Structured brainstorming before creative or feature work |
 | [citation-management](skills/citation-management/) | Academic citation search, validation, and BibTeX generation |
 | [cloudflare-dns](skills/cloudflare-dns/) | Cloudflare DNS management |
