@@ -180,6 +180,24 @@ The first bead depends on the second.
 
 The final evidence gate must depend on every required verification/review/readiness bead.
 
+Tag workflow beads with discoverable metadata:
+
+```text
+anvil_schema = anvil-beads/v1
+anvil_kind   = workflow
+anvil_root   = {root_id}
+anvil_stage  = baseline | implementation | verification | review | readiness
+```
+
+Tag the final gate:
+
+```text
+anvil_schema = anvil-beads/v1
+anvil_kind   = gate
+anvil_root   = {root_id}
+anvil_stage  = evidence-gate
+```
+
 ### Rule
 
 **Do not close the evidence gate because the implementation agent thinks the work is done. Close it only after the evidence predicate in Section 10 is satisfied from Beads state and actual tool output.**
@@ -261,6 +279,54 @@ For IDE diagnostics or other non-shell checks, record the actual diagnostic/tool
 If feasible, retain a hash of full command output. A hash improves auditability but does not replace the output excerpt.
 
 **A Beads record is evidence indexing. The actual tool execution is evidence generation. Both are required.**
+
+## 5.1 Deterministic Command Recorder
+
+This agent has an accompanying `anvil-beads` skill with:
+
+- `scripts/anvil-check`
+- `scripts/anvil-bundle`
+
+Resolve those scripts relative to the installed skill. In this repository:
+
+```bash
+python3 skills/anvil-beads/scripts/anvil-check --help
+python3 skills/anvil-beads/scripts/anvil-bundle --help
+```
+
+For shell/CLI verification, **use `anvil-check` instead of manually running a command and then writing its evidence bead** whenever the helper is available:
+
+```bash
+python3 skills/anvil-beads/scripts/anvil-check \
+  --root {root_id} \
+  --phase baseline \
+  --name tests \
+  -- pytest -q
+```
+
+After implementation:
+
+```bash
+python3 skills/anvil-beads/scripts/anvil-check \
+  --root {root_id} \
+  --phase after \
+  --name tests \
+  -- pytest -q
+```
+
+The helper:
+1. executes the real argv without a shell,
+2. captures stdout/stderr and the actual exit code,
+3. hashes the full output,
+4. creates the evidence bead with metadata atomically at creation,
+5. closes/finalizes that evidence bead,
+6. returns the tested command's exit code.
+
+If evidence recording fails, it returns an infrastructure failure instead of pretending the verification was captured.
+
+Use `--command-label` and `--redact-regex` if a literal argv or output could expose secrets.
+
+IDE diagnostics and subagent reviews are non-shell evidence: record those observed results manually with the same schema, give reviewer checks unique names, and close each evidence bead after it is finalized.
 
 ---
 
@@ -416,6 +482,8 @@ Close the implementation bead only when the code change itself is complete enoug
 # 7. Verify — The Forge
 
 Run all applicable verification tiers. Do not stop after the first success.
+
+For every command-based tier below, invoke it through the bundled `anvil-check` helper. Manual command execution followed by a hand-written passing bead is a fallback only when the helper cannot run.
 
 ## 7.1 Tier 1 — Always
 
@@ -598,30 +666,24 @@ All Medium conditions plus:
 
 ## Machine inspection
 
-Use Beads JSON output as the source of workflow/evidence state:
+Use the bundled deterministic validator as the authority for gate closure:
 
 ```bash
-bd show {root_id} --json
-bd list --json
+python3 skills/anvil-beads/scripts/anvil-bundle \
+  --root {root_id} \
+  --gate <evidence_gate_id> \
+  --close-gate
 ```
 
-Filter the JSON for records whose metadata contains:
+It reads `bd show --json` plus `bd list --all --include-gates --limit 0 --json`, groups immutable attempts, checks Medium/Large signal counts, validates latest attempts, verifies reviewer/readiness evidence, detects baseline-PASS → after-FAIL regressions, and closes the evidence gate only when the predicate passes.
 
-```text
-anvil_root = {root_id}
-```
+A pre-existing failed baseline that still fails with a **different output hash** is deliberately treated as unresolved rather than automatically "no regression". Produce stronger targeted evidence instead of overriding the gate.
 
 Do not use SQL against Beads/Dolt.
-
 Do not infer missing evidence from conversation history.
+Do not manually close the evidence gate to bypass a failing bundle.
 
-If the predicate is satisfied:
-
-```bash
-bd close <evidence_gate_id> --reason="All Anvil evidence gates satisfied" --json
-```
-
-If it is not satisfied, the task is not complete.
+If the validator exits non-zero, the task is not complete.
 
 ---
 
