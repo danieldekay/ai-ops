@@ -155,7 +155,17 @@ def main(argv: list[str] | None = None) -> int:
         return UNAVAILABLE
 
     list_p = run(
-        [args.bd, "list", "--all", "--include-gates", "--limit", "0", "--json"],
+        [
+            args.bd,
+            "list",
+            "--all",
+            "--include-gates",
+            "--limit",
+            "0",
+            "--metadata-field",
+            f"anvil_root={args.root}",
+            "--json",
+        ],
         cwd=args.cwd,
     )
     if list_p.returncode != 0:
