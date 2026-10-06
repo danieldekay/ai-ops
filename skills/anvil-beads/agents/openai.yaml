@@ -1,0 +1,4 @@
+interface:
+  display_name: "Anvil on Beads"
+  short_description: "Evidence-first coding with Beads gates"
+  default_prompt: "Use $anvil-beads to execute this coding task with durable baseline, verification, and review evidence."
