@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+"""Run one verification command and record its observed result as a Beads evidence bead.
+
+Exit contract:
+- If command execution + evidence recording succeed, return the tested command's exit code.
+- If the evidence record cannot be created/closed, return 70 (EX_SOFTWARE-like).
+- If bd is unavailable or the root cannot be read, return 69.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+from typing import Any, Iterable
+
+SCHEMA = "anvil-beads/v1"
+INFRA_ERROR = 70
+UNAVAILABLE = 69
+
+
+def run(args: list[str], *, cwd: str | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(args, cwd=cwd, text=True, capture_output=True, check=False)
+
+
+def parse_json_output(text: str) -> Any:
+    text = text.strip()
+    if not text:
+        raise ValueError("empty JSON output")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # tolerate warnings/progress printed before JSON
+        starts = [i for i in (text.find("{"), text.find("[")) if i >= 0]
+        for start in sorted(starts):
+            try:
+                return json.loads(text[start:])
+            except json.JSONDecodeError:
+                continue
+        raise
+
+
+def issues_from(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [x for x in payload if isinstance(x, dict)]
+    if isinstance(payload, dict):
+        for key in ("issues", "results", "items"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [x for x in value if isinstance(x, dict)]
+        return [payload]
+    return []
+
+
+def first_issue_id(payload: Any) -> str:
+    for issue in issues_from(payload):
+        value = issue.get("id")
+        if isinstance(value, str) and value:
+            return value
+    if isinstance(payload, dict):
+        for key in ("id", "issue_id"):
+            value = payload.get(key)
+            if isinstance(value, str) and value:
+                return value
+    raise ValueError("bd JSON did not contain an issue id")
+
+
+def metadata(issue: dict[str, Any]) -> dict[str, Any]:
+    value = issue.get("metadata")
+    return value if isinstance(value, dict) else {}
+
+
+def redact(text: str, patterns: Iterable[str]) -> str:
+    for pattern in patterns:
+        try:
+            text = re.sub(pattern, "[REDACTED]", text)
+        except re.error as exc:
+            raise ValueError(f"invalid --redact-regex {pattern!r}: {exc}") from exc
+    return text
+
+
+def bounded(text: str, limit: int) -> str:
+    if limit <= 0:
+        return ""
+    if len(text) <= limit:
+        return text
+    marker = f"\n... <truncated {len(text) - limit} chars> ...\n"
+    keep = max(0, limit - len(marker))
+    head = keep // 3
+    tail = keep - head
+    return text[:head] + marker + text[-tail:]
+
+
+def next_attempt(bd: str, root: str, phase: str, check_name: str, cwd: str | None) -> int:
+    p = run([bd, "list", "--all", "--include-gates", "--limit", "0", "--json"], cwd=cwd)
+    if p.returncode != 0:
+        raise RuntimeError(f"bd list failed: {p.stderr.strip() or p.stdout.strip()}")
+    payload = parse_json_output(p.stdout)
+    attempts: list[int] = []
+    for issue in issues_from(payload):
+        meta = metadata(issue)
+        if (
+            str(meta.get("anvil_schema", "")) == SCHEMA
+            and str(meta.get("anvil_kind", "")) == "evidence"
+            and str(meta.get("anvil_root", "")) == root
+            and str(meta.get("anvil_phase", "")) == phase
+            and str(meta.get("anvil_check", "")) == check_name
+        ):
+            try:
+                attempts.append(int(meta.get("anvil_attempt", 0)))
+            except (TypeError, ValueError):
+                pass
+    return max(attempts, default=0) + 1
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="anvil-check",
+        description="Run a command, capture its real result, and record immutable Anvil evidence in Beads.",
+    )
+    p.add_argument("--root", required=True, help="Anvil root bead ID")
+    p.add_argument("--phase", required=True, choices=("baseline", "after", "review", "readiness"))
+    p.add_argument("--name", required=True, help="Stable verification check name, e.g. pytest or build")
+    p.add_argument("--parent", help="Parent bead for evidence; defaults to --root")
+    p.add_argument("--attempt", type=int, help="Attempt number; auto-incremented when omitted")
+    p.add_argument("--tool", default="terminal", help="Tool label stored in evidence")
+    p.add_argument("--cwd", help="Working directory for bd and the verification command")
+    p.add_argument("--bd", default=os.environ.get("ANVIL_BD", "bd"), help="bd executable")
+    p.add_argument("--max-output-chars", type=int, default=4000)
+    p.add_argument(
+        "--redact-regex",
+        action="append",
+        default=[],
+        help="Regex to replace with [REDACTED] in recorded command/output; repeatable",
+    )
+    p.add_argument(
+        "--command-label",
+        help="Safe command label to store instead of the literal argv (useful if argv contains secrets)",
+    )
+    p.add_argument("command", nargs=argparse.REMAINDER, help="Command after --")
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+
+    command = list(args.command)
+    if command and command[0] == "--":
+        command = command[1:]
+    if not command:
+        print("anvil-check: missing command; separate it with --", file=sys.stderr)
+        return 64
+
+    if not shutil.which(args.bd) and not os.path.exists(args.bd):
+        print(f"anvil-check: bd executable not found: {args.bd}", file=sys.stderr)
+        return UNAVAILABLE
+
+    # Root must be readable before doing potentially expensive verification.
+    root_p = run([args.bd, "show", args.root, "--json"], cwd=args.cwd)
+    if root_p.returncode != 0:
+        print(
+            f"anvil-check: cannot read root bead {args.root}: "
+            f"{root_p.stderr.strip() or root_p.stdout.strip()}",
+            file=sys.stderr,
+        )
+        return UNAVAILABLE
+
+    try:
+        attempt = args.attempt or next_attempt(args.bd, args.root, args.phase, args.name, args.cwd)
+    except Exception as exc:
+        print(f"anvil-check: cannot determine evidence attempt: {exc}", file=sys.stderr)
+        return INFRA_ERROR
+
+    if attempt < 1:
+        print("anvil-check: --attempt must be >= 1", file=sys.stderr)
+        return 64
+
+    try:
+        proc = subprocess.run(command, cwd=args.cwd, capture_output=True, check=False)
+        stdout_b = proc.stdout or b""
+        stderr_b = proc.stderr or b""
+        command_exit = int(proc.returncode)
+    except FileNotFoundError as exc:
+        stdout_b = b""
+        stderr_b = str(exc).encode("utf-8", errors="replace")
+        command_exit = 127
+    except OSError as exc:
+        stdout_b = b""
+        stderr_b = str(exc).encode("utf-8", errors="replace")
+        command_exit = 126
+
+    # Preserve original output for the human/agent using the command.
+    if stdout_b:
+        sys.stdout.buffer.write(stdout_b)
+        sys.stdout.buffer.flush()
+    if stderr_b:
+        sys.stderr.buffer.write(stderr_b)
+        sys.stderr.buffer.flush()
+
+    digest_input = stdout_b + b"\n--- STDERR ---\n" + stderr_b
+    output_sha = hashlib.sha256(digest_input).hexdigest()
+
+    stdout_text = stdout_b.decode("utf-8", errors="replace")
+    stderr_text = stderr_b.decode("utf-8", errors="replace")
+    command_text = args.command_label or shlex.join(command)
+
+    try:
+        command_text = redact(command_text, args.redact_regex)
+        stdout_text = redact(stdout_text, args.redact_regex)
+        stderr_text = redact(stderr_text, args.redact_regex)
+    except ValueError as exc:
+        print(f"anvil-check: {exc}", file=sys.stderr)
+        return 64
+
+    snippet_source = ""
+    if stdout_text:
+        snippet_source += "STDOUT:\n" + stdout_text
+    if stderr_text:
+        if snippet_source:
+            snippet_source += "\n"
+        snippet_source += "STDERR:\n" + stderr_text
+    snippet = bounded(snippet_source.rstrip(), args.max_output_chars)
+
+    passed = command_exit == 0
+    result_word = "PASS" if passed else "FAIL"
+    desc = (
+        f"{result_word}: {args.name} attempt {attempt}\n"
+        f"Exit code: {command_exit}\n"
+        f"Command: {command_text}\n"
+        f"Output SHA-256: {output_sha}"
+    )
+    if snippet:
+        desc += "\n\n" + snippet
+
+    meta = {
+        "anvil_schema": SCHEMA,
+        "anvil_kind": "evidence",
+        "anvil_root": args.root,
+        "anvil_phase": args.phase,
+        "anvil_check": args.name,
+        "anvil_attempt": str(attempt),
+        "anvil_tool": args.tool,
+        "anvil_command": command_text,
+        "anvil_exit_code": str(command_exit),
+        "anvil_passed": "true" if passed else "false",
+        "anvil_output_sha256": output_sha,
+    }
+
+    title = f"[evidence] {args.phase}: {args.name} #{attempt}"
+    parent = args.parent or args.root
+    create_cmd = [
+        args.bd,
+        "create",
+        title,
+        "--parent",
+        parent,
+        "-t",
+        "task",
+        "-p",
+        "2",
+        "--description",
+        desc,
+        "--metadata",
+        json.dumps(meta, separators=(",", ":")),
+        "--json",
+    ]
+    created = run(create_cmd, cwd=args.cwd)
+    if created.returncode != 0:
+        print(
+            "\nanvil-check: verification ran, but Beads evidence creation FAILED; "
+            "treat verification as unrecorded.\n"
+            + (created.stderr.strip() or created.stdout.strip()),
+            file=sys.stderr,
+        )
+        return INFRA_ERROR
+
+    try:
+        evidence_id = first_issue_id(parse_json_output(created.stdout))
+    except Exception as exc:
+        print(f"\nanvil-check: evidence created but ID could not be parsed: {exc}", file=sys.stderr)
+        return INFRA_ERROR
+
+    closed = run(
+        [args.bd, "close", evidence_id, "--reason", "Evidence recorded", "--json"],
+        cwd=args.cwd,
+    )
+    if closed.returncode != 0:
+        print(
+            f"\nanvil-check: evidence bead {evidence_id} was created but could not be closed; "
+            "treat verification as not finalized.\n"
+            + (closed.stderr.strip() or closed.stdout.strip()),
+            file=sys.stderr,
+        )
+        return INFRA_ERROR
+
+    summary = {
+        "evidence_id": evidence_id,
+        "root_id": args.root,
+        "phase": args.phase,
+        "check": args.name,
+        "attempt": attempt,
+        "passed": passed,
+        "exit_code": command_exit,
+        "output_sha256": output_sha,
+    }
+    print("\nANVIL_EVIDENCE=" + json.dumps(summary, separators=(",", ":")))
+    return command_exit
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
