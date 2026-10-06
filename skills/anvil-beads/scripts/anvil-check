@@ -181,6 +181,14 @@ def main(argv: list[str] | None = None) -> int:
         print("anvil-check: --attempt must be >= 1", file=sys.stderr)
         return 64
 
+    # Validate redaction expressions before running the verification command.
+    # A typo here must not cause the command to run without a record.
+    try:
+        redact("", args.redact_regex)
+    except ValueError as exc:
+        print(f"anvil-check: {exc}", file=sys.stderr)
+        return 64
+
     try:
         proc = subprocess.run(command, cwd=args.cwd, capture_output=True, check=False)
         stdout_b = proc.stdout or b""
