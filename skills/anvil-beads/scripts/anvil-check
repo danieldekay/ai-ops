@@ -98,7 +98,24 @@ def bounded(text: str, limit: int) -> str:
 
 
 def next_attempt(bd: str, root: str, phase: str, check_name: str, cwd: str | None) -> int:
-    p = run([bd, "list", "--all", "--include-gates", "--limit", "0", "--json"], cwd=cwd)
+    p = run(
+        [
+            bd,
+            "list",
+            "--all",
+            "--include-gates",
+            "--limit",
+            "0",
+            "--metadata-field",
+            f"anvil_root={root}",
+            "--metadata-field",
+            f"anvil_phase={phase}",
+            "--metadata-field",
+            f"anvil_check={check_name}",
+            "--json",
+        ],
+        cwd=cwd,
+    )
     if p.returncode != 0:
         raise RuntimeError(f"bd list failed: {p.stderr.strip() or p.stdout.strip()}")
     payload = parse_json_output(p.stdout)
@@ -268,6 +285,7 @@ def main(argv: list[str] | None = None) -> int:
         title,
         "--parent",
         parent,
+        "--no-inherit-labels",
         "-t",
         "task",
         "-p",
