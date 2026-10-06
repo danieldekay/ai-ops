@@ -675,7 +675,7 @@ python3 skills/anvil-beads/scripts/anvil-bundle \
   --close-gate
 ```
 
-It reads `bd show --json` plus `bd list --all --include-gates --limit 0 --json`, groups immutable attempts, checks Medium/Large signal counts, validates latest attempts, verifies reviewer/readiness evidence, detects baseline-PASS → after-FAIL regressions, and closes the evidence gate only when the predicate passes.
+It reads `bd show --json` plus a root-scoped `bd list --all --metadata-field anvil_root=...` query, groups immutable attempts, checks Medium/Large signal counts, validates latest attempts, verifies reviewer/readiness evidence, detects baseline-PASS → after-FAIL regressions, and closes the evidence gate only when the predicate passes.
 
 A pre-existing failed baseline that still fails with a **different output hash** is deliberately treated as unresolved rather than automatically "no regression". Produce stronger targeted evidence instead of overriding the gate.
 
