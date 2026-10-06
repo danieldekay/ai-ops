@@ -11,6 +11,22 @@ Use Beads as the durable verification graph for evidence-first coding.
 
 **REQUIRED SUB-SKILL:** Use `beads` for Beads CLI conventions and durable task handling.
 
+## Bundled Tools
+
+This skill ships two dependency-free Python helpers:
+
+- `scripts/anvil-check` — executes a shell command, captures the real exit code/output hash, creates and closes an immutable evidence bead, then returns the tested command's exit code.
+- `scripts/anvil-bundle` — reads Beads JSON, validates the completion predicate, renders the Evidence Bundle, and can close the evidence gate.
+
+When this skill is installed elsewhere, resolve these paths relative to this `SKILL.md`. In this repository they are:
+
+```bash
+python3 skills/anvil-beads/scripts/anvil-check --help
+python3 skills/anvil-beads/scripts/anvil-bundle --help
+```
+
+For command-based verification, use `anvil-check` whenever available. Do not replace it with a manual `bd create` sequence unless the helper itself is unavailable.
+
 ## When to Use
 
 Use for:
@@ -39,6 +55,24 @@ root
 
 Use dependencies so the final evidence gate cannot become complete before required work.
 
+Tag workflow beads so tooling can discover them:
+
+```text
+anvil_schema = anvil-beads/v1
+anvil_kind   = workflow
+anvil_root   = <root id>
+anvil_stage  = baseline | implementation | verification | review | readiness
+```
+
+Tag the final gate with:
+
+```text
+anvil_schema = anvil-beads/v1
+anvil_kind   = gate
+anvil_root   = <root id>
+anvil_stage  = evidence-gate
+```
+
 ## Evidence Rule
 
 A verification result is valid only when:
@@ -49,7 +83,23 @@ A verification result is valid only when:
 
 Never create passing evidence in advance. Never overwrite failed attempts; create a new attempt.
 
-If `anvil-check` is available, use it for command-based checks so execution and evidence recording are mechanically coupled. Otherwise run the command first, then record the observed result.
+For shell/CLI checks, use the bundled recorder:
+
+```bash
+python3 skills/anvil-beads/scripts/anvil-check \
+  --root <root-id> \
+  --phase baseline \
+  --name pytest \
+  -- pytest -q
+```
+
+Repeat with `--phase after` after implementation. The helper auto-increments attempts and preserves failed attempts.
+
+If command arguments/output may contain secrets, use `--command-label` and one or more `--redact-regex` flags. Never store secrets in Beads.
+
+For non-shell evidence such as IDE diagnostics or reviewer verdicts, record the observed result manually with the same metadata schema and close the evidence bead when finalized. Reviewer check names must be unique (for example `review-codex`, `review-gemini`, `review-claude`).
+
+If the bundled helper is genuinely unavailable, run the command first and only then record the observed result.
 
 Record at least:
 
@@ -87,9 +137,13 @@ Reviewer verdicts do not count as test/build/runtime signals.
 5. Record every meaningful attempt after execution.
 6. Stage the diff and dispatch fresh-context reviewer(s). Do not give reviewers the implementer's private reasoning.
 7. Turn material reviewer findings into durable fix work and re-run verification after fixes.
-8. Close the evidence gate only when its predicate is satisfied from Beads state.
-9. Commit only after the gate closes; link the commit to the root bead.
-10. Close the root bead last.
+8. Run the deterministic bundle validator:
+   ```bash
+   python3 skills/anvil-beads/scripts/anvil-bundle --root <root-id> --close-gate
+   ```
+9. Treat a non-zero bundle exit as a blocked task. Do not manually close the gate to bypass it.
+10. Commit only after the gate closes; link the commit to the root bead.
+11. Close the root bead last.
 
 ## Handoff
 
@@ -111,6 +165,7 @@ Do not rely on conversation history to explain remaining work.
 - **One mutable test bead:** preserve each attempt; failures are part of the audit trail.
 - **Review replaces tests:** it does not.
 - **Baseline must pass:** wrong; baseline must be captured.
+- **Changed pre-existing failure means no regression:** not mechanically provable. If baseline and after both fail but their output hashes differ, the bundle stays blocked until stronger evidence resolves the ambiguity.
 - **Agent closes gate manually:** gate closure follows evidence, not confidence.
 - **High confidence with open gate:** prohibited.
 - **Markdown TODO/ledger beside Beads:** avoid parallel sources of truth.
