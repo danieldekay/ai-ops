@@ -421,7 +421,14 @@ def main(argv: list[str] | None = None) -> int:
         confidence = "High" if passed and gate_closed else ("Medium" if passed else "Low")
         print(f"**Confidence**: {confidence}")
 
-    return 0 if passed else 1
+    # Exit 0 means the task is mechanically ready to present/commit: predicates
+    # pass AND the evidence gate is actually closed. An open gate is distinct
+    # from a failed predicate but is still non-complete.
+    if passed and gate_closed:
+        return 0
+    if passed:
+        return 2
+    return 1
 
 
 if __name__ == "__main__":
