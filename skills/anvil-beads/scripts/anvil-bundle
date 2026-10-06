@@ -1,0 +1,428 @@
+#!/usr/bin/env python3
+"""Validate an Anvil-on-Beads evidence graph and render a deterministic evidence bundle."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from collections import defaultdict
+from typing import Any
+
+SCHEMA = "anvil-beads/v1"
+INFRA_ERROR = 70
+UNAVAILABLE = 69
+
+
+def run(args: list[str], *, cwd: str | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(args, cwd=cwd, text=True, capture_output=True, check=False)
+
+
+def parse_json_output(text: str) -> Any:
+    text = text.strip()
+    if not text:
+        raise ValueError("empty JSON output")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        starts = [i for i in (text.find("{"), text.find("[")) if i >= 0]
+        for start in sorted(starts):
+            try:
+                return json.loads(text[start:])
+            except json.JSONDecodeError:
+                continue
+        raise
+
+
+def issues_from(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [x for x in payload if isinstance(x, dict)]
+    if isinstance(payload, dict):
+        for key in ("issues", "results", "items"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [x for x in value if isinstance(x, dict)]
+        return [payload]
+    return []
+
+
+def metadata(issue: dict[str, Any]) -> dict[str, Any]:
+    value = issue.get("metadata")
+    return value if isinstance(value, dict) else {}
+
+
+def truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "pass", "passed"}
+
+
+def attempt(issue: dict[str, Any]) -> int:
+    try:
+        return int(metadata(issue).get("anvil_attempt", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def status_closed(issue: dict[str, Any]) -> bool:
+    return str(issue.get("status", "")).lower() == "closed"
+
+
+def md_cell(value: Any) -> str:
+    return str(value if value is not None else "").replace("|", "\\|").replace("\n", " ").strip()
+
+
+def latest_by_check(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for item in items:
+        name = str(metadata(item).get("anvil_check", ""))
+        if name:
+            grouped[name].append(item)
+    return {
+        name: sorted(group, key=lambda x: (attempt(x), str(x.get("updated_at", ""))))[-1]
+        for name, group in grouped.items()
+    }
+
+
+def find_gate(issues: list[dict[str, Any]], root: str, explicit: str | None) -> dict[str, Any] | None:
+    if explicit:
+        return next((x for x in issues if x.get("id") == explicit), None)
+    candidates: list[dict[str, Any]] = []
+    for issue in issues:
+        meta = metadata(issue)
+        title = str(issue.get("title", "")).lower()
+        if str(meta.get("anvil_root", "")) != root and str(issue.get("parent", "")) != root:
+            continue
+        if str(meta.get("anvil_kind", "")) == "gate" or str(meta.get("anvil_stage", "")) == "evidence-gate":
+            candidates.append(issue)
+        elif "evidence-gate" in title or "evidence gate" in title:
+            candidates.append(issue)
+    return candidates[0] if candidates else None
+
+
+def find_workflow_stage(issues: list[dict[str, Any]], root: str, stage: str) -> dict[str, Any] | None:
+    for issue in issues:
+        meta = metadata(issue)
+        if str(meta.get("anvil_root", "")) == root and str(meta.get("anvil_stage", "")) == stage:
+            return issue
+    return None
+
+
+def root_issue(payload: Any) -> dict[str, Any]:
+    rows = issues_from(payload)
+    if not rows:
+        raise ValueError("root issue not found in bd show JSON")
+    return rows[0]
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="anvil-bundle",
+        description="Validate Anvil-on-Beads evidence and optionally close the evidence gate.",
+    )
+    p.add_argument("--root", required=True, help="Anvil root bead ID")
+    p.add_argument("--size", choices=("medium", "large"), help="Override size stored on root")
+    p.add_argument("--risk", help="Override risk shown in bundle")
+    p.add_argument("--gate", help="Evidence-gate bead ID; auto-discovered when omitted")
+    p.add_argument("--cwd", help="Working directory for bd")
+    p.add_argument("--bd", default=os.environ.get("ANVIL_BD", "bd"))
+    p.add_argument(
+        "--close-gate",
+        action="store_true",
+        help="Close the evidence gate when all deterministic predicates pass",
+    )
+    p.add_argument("--json", action="store_true", help="Emit machine-readable summary instead of Markdown")
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+
+    if not shutil.which(args.bd) and not os.path.exists(args.bd):
+        print(f"anvil-bundle: bd executable not found: {args.bd}", file=sys.stderr)
+        return UNAVAILABLE
+
+    root_p = run([args.bd, "show", args.root, "--json"], cwd=args.cwd)
+    if root_p.returncode != 0:
+        print(
+            f"anvil-bundle: cannot read root bead {args.root}: "
+            f"{root_p.stderr.strip() or root_p.stdout.strip()}",
+            file=sys.stderr,
+        )
+        return UNAVAILABLE
+
+    list_p = run(
+        [args.bd, "list", "--all", "--include-gates", "--limit", "0", "--json"],
+        cwd=args.cwd,
+    )
+    if list_p.returncode != 0:
+        print(f"anvil-bundle: bd list failed: {list_p.stderr.strip() or list_p.stdout.strip()}", file=sys.stderr)
+        return INFRA_ERROR
+
+    try:
+        root = root_issue(parse_json_output(root_p.stdout))
+        all_issues = issues_from(parse_json_output(list_p.stdout))
+    except Exception as exc:
+        print(f"anvil-bundle: invalid bd JSON: {exc}", file=sys.stderr)
+        return INFRA_ERROR
+
+    if not any(str(x.get("id", "")) == args.root for x in all_issues):
+        all_issues.append(root)
+
+    root_meta = metadata(root)
+    size = (args.size or str(root_meta.get("anvil_size", "medium"))).lower()
+    if size not in {"medium", "large"}:
+        print(f"anvil-bundle: unsupported size {size!r}; use --size medium|large", file=sys.stderr)
+        return 64
+    risk = args.risk or str(root_meta.get("anvil_risk", "unknown"))
+
+    evidence = [
+        x
+        for x in all_issues
+        if str(metadata(x).get("anvil_schema", "")) == SCHEMA
+        and str(metadata(x).get("anvil_kind", "")) == "evidence"
+        and str(metadata(x).get("anvil_root", "")) == args.root
+    ]
+    by_phase: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for item in evidence:
+        by_phase[str(metadata(item).get("anvil_phase", ""))].append(item)
+
+    baseline_latest = latest_by_check(by_phase["baseline"])
+    after_latest = latest_by_check(by_phase["after"])
+    review_latest = latest_by_check(by_phase["review"])
+    readiness_latest = latest_by_check(by_phase["readiness"])
+
+    # Evidence is finalized only after its bead is closed. anvil-check closes
+    # command evidence after recording; manually-created review/readiness
+    # evidence must follow the same lifecycle.
+    open_latest_evidence = []
+    for phase_name, latest_map in (
+        ("baseline", baseline_latest),
+        ("after", after_latest),
+        ("review", review_latest),
+        ("readiness", readiness_latest),
+    ):
+        for check_name, issue in latest_map.items():
+            if not status_closed(issue):
+                open_latest_evidence.append(f"{phase_name}:{check_name} ({issue.get('id', '?')})")
+
+    gate = find_gate(all_issues, args.root, args.gate)
+    baseline_stage = find_workflow_stage(all_issues, args.root, "baseline")
+    implementation_stage = find_workflow_stage(all_issues, args.root, "implementation")
+
+    failures: list[str] = []
+    warnings: list[str] = []
+
+    if open_latest_evidence:
+        failures.append("unfinalized evidence beads: " + ", ".join(sorted(open_latest_evidence)))
+
+    if not baseline_latest:
+        failures.append("no baseline evidence recorded")
+    if baseline_stage is not None and not status_closed(baseline_stage):
+        failures.append(f"baseline workflow bead {baseline_stage.get('id')} is not closed")
+    if implementation_stage is not None and not status_closed(implementation_stage):
+        failures.append(f"implementation workflow bead {implementation_stage.get('id')} is not closed")
+
+    min_after = 2 if size == "medium" else 3
+    meaningful_after = {
+        name: issue
+        for name, issue in after_latest.items()
+        if name != "tier3-infeasible" and truthy(metadata(issue).get("anvil_passed"))
+    }
+    if len(meaningful_after) < min_after:
+        failures.append(
+            f"only {len(meaningful_after)} passing independent after-state signals; {min_after} required"
+        )
+
+    failed_latest_after = [
+        name for name, issue in after_latest.items() if not truthy(metadata(issue).get("anvil_passed"))
+    ]
+    if failed_latest_after:
+        failures.append("latest after-state checks failing: " + ", ".join(sorted(failed_latest_after)))
+
+    required_reviews = 1 if size == "medium" else 3
+    passing_reviews = [
+        issue for issue in review_latest.values() if truthy(metadata(issue).get("anvil_passed"))
+    ]
+    if len(passing_reviews) < required_reviews:
+        failures.append(f"only {len(passing_reviews)} passing independent reviews; {required_reviews} required")
+
+    failed_reviews = [
+        name for name, issue in review_latest.items() if not truthy(metadata(issue).get("anvil_passed"))
+    ]
+    if failed_reviews:
+        failures.append("latest reviews failing: " + ", ".join(sorted(failed_reviews)))
+
+    if size == "large":
+        for check in ("readiness-observability", "readiness-degradation", "readiness-secrets"):
+            item = readiness_latest.get(check)
+            if item is None:
+                failures.append(f"missing {check}")
+            elif not truthy(metadata(item).get("anvil_passed")):
+                failures.append(f"{check} failed")
+
+    regressions: list[str] = []
+    unresolved_baseline_failures: list[str] = []
+    for name, base in baseline_latest.items():
+        after = after_latest.get(name)
+        if after is None:
+            continue
+        base_pass = truthy(metadata(base).get("anvil_passed"))
+        after_pass = truthy(metadata(after).get("anvil_passed"))
+        if base_pass and not after_pass:
+            regressions.append(f"{name}: baseline PASS → after FAIL")
+        elif not base_pass and not after_pass:
+            base_hash = str(metadata(base).get("anvil_output_sha256", ""))
+            after_hash = str(metadata(after).get("anvil_output_sha256", ""))
+            if base_hash and after_hash and base_hash == after_hash:
+                warnings.append(f"{name}: same failing output hash as baseline; no detected change")
+            else:
+                unresolved_baseline_failures.append(name)
+
+    if regressions:
+        failures.append("regressions detected: " + "; ".join(regressions))
+    if unresolved_baseline_failures:
+        failures.append(
+            "pre-existing failing checks changed and cannot be compared mechanically: "
+            + ", ".join(sorted(unresolved_baseline_failures))
+        )
+
+    unresolved_findings = []
+    for issue in all_issues:
+        meta = metadata(issue)
+        if (
+            str(meta.get("anvil_root", "")) == args.root
+            and str(meta.get("anvil_kind", "")) == "finding"
+            and not status_closed(issue)
+        ):
+            unresolved_findings.append(str(issue.get("id", "?")))
+    if unresolved_findings:
+        failures.append("unresolved Anvil findings: " + ", ".join(unresolved_findings))
+
+    if gate is None:
+        failures.append("evidence gate bead not found")
+    elif args.gate and str(gate.get("id")) != args.gate:
+        failures.append(f"requested evidence gate {args.gate} not found")
+
+    passed = not failures
+
+    gate_closed_now = False
+    if passed and args.close_gate and gate is not None and not status_closed(gate):
+        close_p = run(
+            [args.bd, "close", str(gate["id"]), "--reason", "All Anvil evidence gates satisfied", "--json"],
+            cwd=args.cwd,
+        )
+        if close_p.returncode != 0:
+            failures.append(
+                f"all predicates passed but gate close failed: {close_p.stderr.strip() or close_p.stdout.strip()}"
+            )
+            passed = False
+        else:
+            gate["status"] = "closed"
+            gate_closed_now = True
+
+    gate_closed = bool(gate and status_closed(gate))
+    if passed and not gate_closed:
+        warnings.append("evidence predicates pass, but evidence gate remains open")
+
+    bundle = {
+        "root_id": args.root,
+        "task": root.get("title", ""),
+        "size": size,
+        "risk": risk,
+        "passed": passed,
+        "gate_id": gate.get("id") if gate else None,
+        "gate_closed": gate_closed,
+        "gate_closed_now": gate_closed_now,
+        "failures": failures,
+        "warnings": warnings,
+        "baseline": baseline_latest,
+        "after": after_latest,
+        "review": review_latest,
+        "readiness": readiness_latest,
+        "regressions": regressions,
+        "unresolved_baseline_failures": unresolved_baseline_failures,
+    }
+
+    if args.json:
+        compact = dict(bundle)
+        for key in ("baseline", "after", "review", "readiness"):
+            compact[key] = {
+                name: {
+                    "id": issue.get("id"),
+                    "passed": truthy(metadata(issue).get("anvil_passed")),
+                    "attempt": attempt(issue),
+                    "command": metadata(issue).get("anvil_command", ""),
+                    "exit_code": metadata(issue).get("anvil_exit_code", ""),
+                }
+                for name, issue in bundle[key].items()
+            }
+        print(json.dumps(compact, indent=2, sort_keys=True))
+    else:
+        print("## 🔨 Anvil-on-Beads Evidence Bundle\n")
+        print(f"**Root**: {args.root}")
+        print(f"**Task**: {md_cell(root.get('title', ''))}")
+        print(f"**Size**: {size.capitalize()}")
+        print(f"**Risk**: {md_cell(risk)}")
+        print()
+
+        def table(title: str, data: dict[str, dict[str, Any]]) -> None:
+            print(f"### {title}")
+            print("| Check | Attempt | Result | Command/Tool | Evidence |")
+            print("|---|---:|---|---|---|")
+            if not data:
+                print("| — | — | — | — | — |")
+            for name, issue in sorted(data.items()):
+                meta = metadata(issue)
+                result = "PASS" if truthy(meta.get("anvil_passed")) else "FAIL"
+                cmd = meta.get("anvil_command") or meta.get("anvil_tool") or ""
+                print(
+                    f"| {md_cell(name)} | {attempt(issue)} | {result} | "
+                    f"{md_cell(cmd)} | {md_cell(issue.get('id', ''))} |"
+                )
+            print()
+
+        table("Baseline", baseline_latest)
+        table("Verification", after_latest)
+        table("Adversarial Review", review_latest)
+        if size == "large":
+            table("Operational Readiness", readiness_latest)
+
+        print("### Regressions")
+        if regressions:
+            for item in regressions:
+                print(f"- {item}")
+        else:
+            print("- None mechanically detected.")
+        if unresolved_baseline_failures:
+            print(
+                "- Unresolved comparison for pre-existing failures: "
+                + ", ".join(sorted(unresolved_baseline_failures))
+            )
+        print()
+
+        print("### Gate")
+        print(f"**Evidence gate**: {md_cell(gate.get('id') if gate else 'NOT FOUND')} — "
+              f"{'CLOSED' if gate_closed else 'OPEN'}")
+        print(f"**Predicate**: {'PASS' if passed else 'FAIL'}")
+        if failures:
+            print("\nBlocking conditions:")
+            for item in failures:
+                print(f"- {item}")
+        if warnings:
+            print("\nWarnings:")
+            for item in warnings:
+                print(f"- {item}")
+        print()
+
+        confidence = "High" if passed and gate_closed else ("Medium" if passed else "Low")
+        print(f"**Confidence**: {confidence}")
+
+    return 0 if passed else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
