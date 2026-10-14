@@ -1,0 +1,23 @@
+{
+  "skill_name": "media-transcript-ingester",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want transcripts from this YouTube playlist for my TangoAtlas evidence archive: https://www.youtube.com/playlist?list=PL25tR6XnhRYub-BYXEmcUaXy5Ng6QFuKL — plan the run (don't download yet) and show the output layout plus how you'll avoid silently skipping videos without captions.",
+      "expected_output": "Uses media-transcript-ingester workflow: yt-dlp captions first, archive only after transcript exists, Parakeet for gaps, evidence pack layout with manifest.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Here's a tango podcast RSS feed URL. Prefer publisher transcripts from podcast:transcript, and tell me which episodes would need Parakeet.",
+      "expected_output": "Routes to fetch_podcast_rss.py; prefers RSS transcripts; lists needs_parakeet episodes; does not default to Whisper.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Transcribe the MP3s in ~/Downloads/tango-episodes that don't have transcripts yet. We have Parakeet in the 2ndBrain repo.",
+      "expected_output": "Invokes TangocynicParakeet via PARAKEET_PACKAGE; skips existing .parakeet.txt; normalize + manifest; no Whisper.",
+      "files": []
+    }
+  ]
+}
