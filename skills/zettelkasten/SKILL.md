@@ -1,306 +1,196 @@
 ---
 name: zettelkasten
-description: Zettelkasten knowledge management via MCP tools — atomic note creation, semantic linking strategies, research integration, permanent notes, knowledge graphs, and validating claims with external sources. Use when creating, linking, or organizing Zettelkasten notes or processing fleeting notes into permanent knowledge.
+description: "Build and manage a networked knowledge base (second brain) using Luhmann's Zettelkasten method with the zettelkasten-mcp MCP server. Use when creating atomic notes, linking ideas, searching the knowledge graph, building Maps of Content, capturing research, processing meeting/fleeting notes, verifying claims with sources, or running knowledge maintenance. Triggers: 'zettelkasten', 'second brain', 'atomic note', 'knowledge graph', 'zk_create_note', 'note taking', 'Luhmann', 'slip box', 'permanent note', 'literature note'."
+author: Daniel Kaesmayr
+metadata:
+  version: "2.0.0"
+  category: knowledge-management
+  repo: https://github.com/entanglr/zettelkasten-mcp
 ---
 
-# Zettelkasten Knowledge Management Skill
+# Zettelkasten Knowledge Management
 
-## Overview
+Consolidates the former generic `zettelkasten` skill (method-only) and
+`zettelkasten-mcp` (server/tooling). One skill: method + tools + workflows.
+Notes are Markdown files with YAML frontmatter (source of truth), indexed in
+SQLite by the `zettelkasten-mcp` server for fast graph traversal.
 
-This skill provides comprehensive guidance for managing a personal knowledge management (PKM) system using the Zettelkasten method through MCP tools. It covers atomic note creation, semantic linking strategies, research integration, and knowledge emergence patterns.
+## Luhmann's Zettelkasten
 
-## When to Use This Skill
+Niklas Luhmann (1927–1998) authored 70+ books from a physical slip-box. The
+core insight: a knowledge system should be a _communication partner_, not an
+archive — you should be surprised by what you find. Deep method background:
+[references/luhmann.md](references/luhmann.md).
 
-- Creating, linking, or organizing notes in a Zettelkasten system
-- Conducting research to create well-sourced permanent notes
-- Building knowledge graphs and discovering emergent insights
-- Processing fleeting notes into permanent knowledge
-- Validating claims with external sources
+**Four principles:**
 
-## Core Principles
+| Principle | Meaning |
+| --- | --- |
+| **Atomicity** | One idea per note. Can't summarize in one sentence → split. |
+| **Own words** | Never copy; reformulate. Understanding is the work. |
+| **Radical linking** | Every note links to existing notes. Unlinked note = dead. |
+| **Bottom-up structure** | Organization emerges from connections — never pre-define folders. |
 
-### 1. Atomicity
+## Server Setup (once)
 
-Each note contains exactly **one idea or concept**. This enables:
+Install and configure the `zettelkasten-mcp` server via `uvx`:
 
-- Precise linking (link to exactly what you mean)
-- Reusable knowledge units
-- Clear thinking through forced decomposition
-- Maximum connection potential
+```bash
+# SSH (recommended) — or HTTPS with: git+https://$(gh auth token)@github.com/entanglr/zettelkasten-mcp
+uvx --from "git+ssh://git@github.com/entanglr/zettelkasten-mcp" zettelkasten-mcp
+# Pinned: append @v1.3.0 — full guide: references/installation.md
+```
 
-**Test**: If you can't summarize a note in one sentence, split it.
+`mcp.json` block:
 
-### 2. Connectivity
+```json
+{
+  "mcpServers": {
+    "zettelkasten": {
+      "command": "uvx",
+      "args": ["--from", "git+ssh://git@github.com/entanglr/zettelkasten-mcp",
+               "zettelkasten-mcp", "--notes-dir", "/path/to/notes",
+               "--database-path", "/path/to/zettelkasten.db"]
+    }
+  }
+}
+```
 
-Notes gain value through meaningful connections. Links should:
-
-- Explain the relationship (not just exist)
-- Use semantic link types (supports, contradicts, extends, refines)
-- Be bidirectional when relationships are mutual
-- Create paths of thought, not just collections
-
-### 3. Emergence
-
-New insights emerge from the network. Foster this by:
-
-- Looking for unexpected connections across domains
-- Creating structure notes when clusters form (7-15 notes on a topic)
-- Reviewing orphaned notes for integration opportunities
-- Following link chains to discover implicit relationships
-
-### 4. Source Integrity
-
-Every factual claim must be traceable:
-
-- Minimum 2 independent sources for significant claims
-- Full bibliographic citations (author, year, title, source, URL, access date)
-- Reliability indicators (✅ peer-reviewed, ⚠️ authoritative, ❌ anecdotal)
-- Evidence strength assessment (strong/moderate/weak)
+Env alternative: `ZETTELKASTEN_NOTES_DIR`, `ZETTELKASTEN_DATABASE_PATH`,
+`ZETTELKASTEN_LOG_LEVEL`. The SQLite index is derived — delete it anytime and
+run `zk_rebuild_index`.
 
 ## Note Types
 
-| Type           | Purpose                                    | Lifespan  | Tool Pattern                                  |
-| -------------- | ------------------------------------------ | --------- | --------------------------------------------- |
-| **Fleeting**   | Capture raw thoughts quickly               | Temporary | `zk_create_note note_type="fleeting"`         |
-| **Literature** | Extract ideas from sources with citations  | Permanent | Include full citation in content              |
-| **Permanent**  | Well-formulated, standalone, sourced ideas | Permanent | `note_type="permanent"` + research validation |
-| **Structure**  | Organize clusters of 7-15 related notes    | Permanent | `note_type="structure"`                       |
-| **Hub**        | Entry points for broad topic areas         | Permanent | `note_type="hub"`                             |
+| Type | Purpose | Lifespan | Tool pattern |
+| --- | --- | --- | --- |
+| `fleeting` | Raw captures, quick ideas | Process within 1 week | `zk_create_note note_type="fleeting"` |
+| `literature` | Extract ideas from a source, with citation | Permanent | Include full citation |
+| `permanent` | Well-formulated, standalone, sourced ideas | Permanent | research-validated |
+| `structure` | MOC — index of 7–15 related notes | Permanent | `note_type="structure"` |
+| `hub` | Entry point for a major domain | Permanent | `note_type="hub"` |
+
+**Quality gate for permanent notes**: single coherent idea · own words ·
+self-contained · declarative title ("Active Recall Strengthens Memory", not
+"Learning Note") · 3–7 tags · linked to 2+ notes with specific link types ·
+citation if derived from a source.
 
 ## Semantic Link Types
 
-| Link Type     | Use When                               | Example Description                       |
-| ------------- | -------------------------------------- | ----------------------------------------- |
-| `reference`   | Simply connecting related information  | "See also for background"                 |
-| `extends`     | One note builds upon another           | "Taking this idea further with..."        |
-| `refines`     | One note clarifies or improves another | "More precise formulation of..."          |
-| `contradicts` | Opposing views or evidence             | "Alternative perspective supported by..." |
-| `questions`   | One note poses questions about another | "This raises the question of..."          |
-| `supports`    | Evidence for another claim             | "Empirical validation from Zhang et al."  |
-| `related`     | Generic relationship                   | "Shares conceptual overlap with..."       |
+Choose the most specific type; `related` is a last resort. Always set
+`bidirectional: true` for mutual relationships and add a description
+("X supports Y because…").
 
-## MCP Tool Reference
+| Type | Use when | Inverse |
+| --- | --- | --- |
+| `supports` | Evidence for a claim | `supported_by` |
+| `contradicts` | Opposing views/evidence | `contradicted_by` |
+| `extends` | Builds upon a concept | `extended_by` |
+| `refines` | Clarifies or improves | `refined_by` |
+| `questions` | Raises doubt or challenge | `questioned_by` |
+| `reference` | Simple citation | `reference` (symmetric) |
+| `related` | Generic overlap — sparingly | `related` (symmetric) |
 
-### Knowledge Discovery
+## MCP Tools Reference
 
-```plaintext
-# Search existing knowledge before creating
-zk_search_notes query="concept" tags="tag1,tag2" limit=10
+**CRUD**: `zk_create_note` (`title`, `content`, `note_type`, `tags[]`) ·
+`zk_get_note` · `zk_update_note` · `zk_delete_note` · `zk_list_notes` ·
+`zk_list_notes_by_date`
 
-# Find connection opportunities
-zk_find_similar_notes note_id="[ID]" threshold=0.3 limit=5
+**Search & discovery**: `zk_search_notes` (`query`, `tags[]`, `note_type`) ·
+`zk_find_similar_notes` (`note_id`, `threshold`) · `zk_find_central_notes` ·
+`zk_find_orphaned_notes` · `zk_get_all_tags`
 
-# Explore central concepts
-zk_find_central_notes limit=10
+**Graph/linking**: `zk_create_link` (`source_id`, `target_id`, `link_type`,
+`description`, `bidirectional`) · `zk_remove_link` · `zk_get_linked_notes`
+(`direction`: both/outgoing/incoming)
 
-# Find integration opportunities
-zk_find_orphaned_notes
+**Maintenance**: `zk_rebuild_index` (after manual file edits)
 
-# Follow knowledge paths
-zk_get_linked_notes note_id="[ID]" direction="both"
-```
+## Core Workflows
 
-### Knowledge Creation
+### 1. Create and Link a Note
+1. `zk_search_notes(query="<concept>")` → avoid duplicates
+2. `zk_create_note(...)` → atomic note
+3. `zk_find_similar_notes(note_id)` → connection candidates
+4. `zk_create_link(..., bidirectional=true)` → link immediately; never orphan
 
-```plaintext
-# Create atomic note
-zk_create_note title="Concept Title" content="..." note_type="permanent" tags="tag1,tag2"
+### 2. Research Integration (validate claims with sources)
+1. **Concept identification**: search existing notes first.
+2. **External research**: use the active harness's web-search/fetch tools
+   (query patterns: "[concept] research evidence empirical", "[concept]
+   critique limitations alternatives").
+3. **Synthesis**: create the permanent note in own words, complete citations
+   for every claim, evidence-strength marks, acknowledge limitations.
+4. **Connection**: link with research-backed descriptions and appropriate
+   link types; bidirectional for important relationships.
 
-# Create semantic link with explanation
-zk_create_link source_id="[NEW]" target_id="[EXISTING]" link_type="supports" description="Research by X demonstrates..." bidirectional=true
+### 3. Capture Research (papers/books/talks)
+Fleeting notes per key point → upgrade to `literature` with `[@citekey]` →
+synthesize `permanent` note across sources → attach to relevant MOC.
 
-# Update with new findings
-zk_update_note note_id="[ID]" content="[updated content with new sources]"
-```
-
-### Knowledge Organization
-
-```plaintext
-# Review recent activity
-zk_list_notes_by_date start_date="YYYY-MM-DD" use_updated=true limit=10
-
-# Explore tag taxonomy
-zk_get_all_tags
-
-# Rebuild index after bulk changes
-zk_rebuild_index
-```
-
-## Research Integration Workflow
-
-### Phase 1: Concept Identification
-
-1. **Search existing notes** to prevent duplication
-2. **Formulate research questions**:
-   - What do authoritative sources say?
-   - Is there empirical evidence?
-   - What are alternative perspectives?
-
-### Phase 2: External Research
-
-Use Tavily tools for comprehensive research:
-
-```plaintext
-# Academic/professional sources
-tavily_search query="[concept] research evidence empirical" max_results=10
-
-# Alternative perspectives
-tavily_search query="[concept] critique limitations alternatives"
-
-# Deep documentation crawl
-tavily_crawl url="[authoritative_doc_url]" instructions="Extract key principles and evidence"
-
-# Extract specific content
-tavily_extract urls=["url1", "url2"] query="[specific aspect]"
-```
-
-### Phase 3: Synthesis
-
-1. **Create permanent note** synthesizing multiple sources
-2. **Include complete citations** for every claim
-3. **Mark evidence strength** (strong/moderate/weak)
-4. **Acknowledge limitations** and uncertainties
-
-### Phase 4: Connection
-
-1. **Link with research-backed descriptions**
-2. **Choose appropriate link types** based on evidence
-3. **Create bidirectional links** for important relationships
-
-## Note Template
-
-```markdown
-# [Concept Title - Clear and Descriptive]
-
-## Core Concept
-
-[Explain the concept in your own words, synthesizing research findings]
-
-## Supporting Evidence
-
-- **Source 1**: [Finding with citation] [✅ Peer-reviewed]
-- **Source 2**: [Evidence with citation] [⚠️ Authoritative]
-
-## Alternative Perspectives
-
-[Contrasting views or critiques, properly cited]
-
-## Context and Limitations
-
-[Boundary conditions, applicability constraints, uncertainties]
-
-## Source
-
-**Primary Sources**:
-
-- [Full citation with URL]. Accessed: [Date].
-- [Full citation with URL]. Accessed: [Date].
-
-**Evidence Strength**: [Strong/Moderate/Weak]
-**Research Date**: [YYYY-MM-DD]
-```
+### 4. Weekly Maintenance
+Process fleeting notes → `zk_find_orphaned_notes` (link or cull) →
+`zk_find_central_notes` (create `structure` notes for clusters of 7–15) →
+`zk_get_all_tags` (merge duplicates).
 
 ## Citation Standards
 
-### Required Elements
+**Required elements**: author(s), year, title (quotes for articles, italics
+for books), source, URL/DOI, access date for web sources.
 
-1. **Author(s)**
-2. **Year**
-3. **Title** (in quotes for articles, italics for books)
-4. **Source** (journal, publisher, website)
-5. **URL/DOI**
-6. **Access date** (for web sources)
+**Reliability indicators**: ✅ peer-reviewed research / official documentation ·
+⚠️ authoritative source / expert opinion · ❌ anecdotal (use sparingly).
 
-### Reliability Indicators
+**Quality tiers**: 1 meta-analyses & official standards · 2 peer-reviewed
+articles & official docs · 3 preprints, industry reports · 4 expert blogs,
+news · 5 social media, marketing (avoid).
 
-- ✅ **Peer-reviewed research** - Academic journals with peer review
-- ✅ **Official documentation** - Standards bodies, authoritative organizations
-- ⚠️ **Authoritative source** - Recognized experts, established organizations
-- ⚠️ **Expert opinion** - Individual commentary without peer review
-- ❌ **Anecdotal** - Personal accounts, social media (use sparingly)
+## Note Template
 
-### Quality Tiers
-
-1. **Tier 1**: Peer-reviewed meta-analyses, official standards, landmark papers
-2. **Tier 2**: Peer-reviewed articles, academic books, official documentation
-3. **Tier 3**: Preprints, industry reports, conference proceedings
-4. **Tier 4**: Expert blogs, news articles, white papers
-5. **Tier 5**: Social media, anonymous sources, marketing materials
-
-## Best Practices
-
-### Note Creation
-
-- [ ] One clear idea per note (atomic)
-- [ ] Written in your own words (not copy-paste)
-- [ ] 3-7 paragraphs maximum (concise)
-- [ ] Can stand alone (includes context)
-- [ ] 2-5 specific tags
-- [ ] All claims have citations
-- [ ] Sources have reliability indicators
-
-### Linking
-
-- [ ] Search for existing related notes first
-- [ ] Use specific link types (not just "related")
-- [ ] Add descriptions explaining the relationship
-- [ ] Use bidirectional=true for mutual relationships
-- [ ] Link based on evidence, not assumption
-
-### Maintenance
-
-- [ ] Process fleeting notes weekly
-- [ ] Review orphaned notes monthly
-- [ ] Update notes when new research emerges
-- [ ] Verify URLs periodically
-- [ ] Strengthen weak-evidence claims
+Use `templates/permanent.md` (also: fleeting, literature, structure, hub) —
+skeleton: Core Concept → Supporting Evidence (with reliability indicators) →
+Alternative Perspectives → Context and Limitations → Sources + Evidence
+Strength + Research Date.
 
 ## Common Patterns
 
-### Processing Fleeting Notes
+- **Processing fleeting notes**: `zk_search_notes note_type="fleeting"` →
+  research/validate/transform → `zk_delete_note` the fleeting original.
+- **Claim verification**: identify unsourced claims → web-search evidence →
+  `zk_update_note` with verified data and citations.
+- **Anti-patterns**: collector's fallacy · link spam · single-source permanent
+  notes · orphan islands · copy-paste without synthesis · tag overload (>5) ·
+  premature structure notes (<7 components).
 
-```plaintext
-1. zk_search_notes note_type="fleeting" limit=10
-2. For each: Research → Validate → Transform to permanent
-3. zk_delete_note note_id="[fleeting_id]" after transformation
+## Tagging Strategy
+
+Categories: domain (`ai`, `neuroscience`) · idea type (`method`, `principle`) ·
+project (`project-rotf`) · status (`wip`, `evergreen`) · source type (`paper`,
+`talk`). Rules: 3–7 tags, hyphens not spaces, check `zk_get_all_tags` before
+coining new ones.
+
+## Markdown Note Format
+
+```markdown
+---
+id: 20251109T120530123456789   # timestamp-based, server-generated
+title: Active Recall Strengthens Long-Term Memory
+type: permanent
+tags: [memory, learning, spaced-repetition]
+created: 2025-11-09T12:05:30
+updated: 2025-11-09T12:05:30
+---
+# Active Recall Strengthens Long-Term Memory
+Retrieving information produces stronger retention than re-reading…
+[@roediger2006]
+## Links
+- supports [[20251109T115500000000000]] Spaced repetition exploits this
 ```
 
-### Building Structure Notes
+## Integration
 
-```plaintext
-1. zk_search_notes tags="[topic]" limit=20
-2. When 7-15 notes exist on topic:
-3. zk_create_note note_type="structure" title="[Topic] — Structure Note"
-4. Link to all component notes with descriptions
-```
-
-### Claim Verification
-
-```plaintext
-1. zk_get_note identifier="[ID]"
-2. Identify unsourced or weak claims
-3. tavily_search query="[claim] evidence research"
-4. zk_update_note with verified data and citations
-```
-
-## Anti-Patterns to Avoid
-
-❌ **Collector's Fallacy**: Saving information without processing it
-❌ **Link Spam**: Creating links without meaningful relationships
-❌ **Single-Source Notes**: Permanent notes relying on one source
-❌ **Orphan Islands**: Notes with no connections
-❌ **Copy-Paste**: Storing quotes without synthesis
-❌ **Tag Overload**: More than 5 tags per note
-❌ **Premature Structure**: Creating structure notes with < 7 component notes
-
-## Integration with Other Skills
-
-- **PDF Skill**: Extract content from PDFs for literature notes
-- **Web Research**: Use Tavily for source gathering
-- **OpenRouter**: Use AI models for synthesis assistance
-
-## Resources
-
-- Zettelkasten.de - Method documentation
-- Sonke Ahrens - "How to Take Smart Notes"
-- Niklas Luhmann - Original methodology
+- **LLM wiki** (`llm-wiki` skill): the wiki holds evidence/sources; ZK notes
+  hold distilled personal knowledge — link them, don't duplicate.
+- **Research skills** (`navigator` → Research): source gathering flows into
+  `literature` notes.
