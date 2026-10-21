@@ -30,6 +30,11 @@ skill** (owned, references the original) — existing examples in
 | skill-creator | `anthropics/skills/skills/skill-creator/` | heavy skill authoring/evals/benchmarks | confirmed 2026-10-21, declared globally |
 | clean-code | `jackjin1997/ClawForge/skills/clean-code/` | Robert C. Martin Clean Code principles | confirmed via frontmatter source line, declared globally |
 | awesome-copilot instructions | `github/awesome-copilot/` | community instruction pack | agent-skills target |
+| find-skills | `vercel-labs/skills/skills/find-skills/` | discover/install skills from the ecosystem | skills.sh official; declared 2026-10-21 |
+| agentic-eval | `github/awesome-copilot/skills/agentic-eval/` | self-critique / evaluator-optimizer patterns | installed copy identical; declared 2026-10-21 |
+| lesson-learned | `softaworks/agent-toolkit/skills/lesson-learned/` | SE lessons from git history | installed copy identical; declared 2026-10-21 |
+| compound-learnings | `parcadei/continuous-claude-v3/.claude/skills/compound-learnings/` | turn session learnings into permanent capabilities | installed copy identical; declared 2026-10-21 |
+| self-learning | `kulaxyz/self-learning-skills/skills/self-learning/` | /learn — harvest golden paths into skills | third-party BUT our copy has local path corrections — keep manual, overlay-style; do not force-reinstall |
 
 ## Project-scoped (declared in repo `apm.yml`, e.g. the ansible repo)
 
@@ -41,22 +46,23 @@ skill** (owned, references the original) — existing examples in
 | zigbee2mqtt | `szkocot/skills/` | Z2M converters, device pairing |
 | avoid-ai-writing | `conorbronsdon/avoid-ai-writing/` | AI-ism detection/rewriting (vendored copy excluded from pre-commit) |
 
-## Fleet-authored (no upstream found — GitHub search 2026-10-21)
+## Fleet-authored (no upstream found — GitHub + skills.sh search 2026-10-21)
 
 These live only in `~/.agents/skills/` and were written by Daniel's agent fleet.
-Source-confirmation pass found no matching upstream. **Next step: canonicalize
-into `danieldekay/ai-ops/skills/`, then declare via APM** (same as the
-navigators and end-session-hygiene were):
+**Next step: canonicalize into `danieldekay/ai-ops/skills/`, then declare via
+APM** (same as the navigators and end-session-hygiene were):
 
-`agent-development` · `find-skills` · `lesson-learned` · `compound-learnings` ·
-`self-learning` · `ontology` · `agentic-eval` · `debugging-strategies` ·
-`uncle-bob-craft` · `lean-ctx-handoff` · `clean-architecture` (NOT in
-ClawForge despite same pack style) · `zettelkasten` · `zettelkasten-mcp`
-(documents the third-party `entanglr/zettelkasten-mcp` server, but the skill
-itself is authored docs)
+`agent-development` (probable fuxicodex/Fuxi or sickn33 origin, path unverified) ·
+`ontology` · `lean-ctx-handoff` · `clean-architecture` (NOT in ClawForge despite
+same pack style) · `zettelkasten` · `zettelkasten-mcp` (documents the third-party
+`entanglr/zettelkasten-mcp` server, but the skill itself is authored docs)
 
 Also authored + already canonical in ai-ops: `zettelkasten-orchestrator`
 (committed 2026-10, declared globally).
+
+Note: `debugging-strategies` and `uncle-bob-craft` from
+`sickn33/agentic-awesome-skills` exist upstream but are NOT installed anywhere
+— dropped from the manual list 2026-10-21 (re-add via APM if wanted).
 
 ## Superseded / retired
 
