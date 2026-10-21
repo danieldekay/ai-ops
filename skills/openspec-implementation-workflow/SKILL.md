@@ -1,57 +1,87 @@
 ---
 name: "openspec-implementation-workflow"
-description: "End-to-end OpenSpec change implementation workflow focusing on design tokens, components, and accessibility. Use when implementing OpenSpec changes with design systems, creating reusable components, and applying accessibility best practices."
-version: 1
-created: "2026-05-11"
-updated: "2026-05-11"
+description: "End-to-end OpenSpec change implementation workflow: status check, context reading, design-token systems, base components, TypeScript interfaces, API integration, testing, and quality gates. Use when implementing any OpenSpec change with UI/design-system work in a Svelte 5 / SvelteKit (or similar) project. This is THE consolidated OpenSpec implementation skill — do not create per-change variants."
+author: Daniel Kaesmayr
+metadata:
+  version: "2.0.0"
+  category: workflow
 ---
+
+# OpenSpec Implementation Workflow
+
+Consolidates the former per-change skills (comprehensive-implementation,
+comprehensive-development-workflow, comprehensive-component-development,
+spec-driven-development, svelte-component-implementation, component-migration,
+enhanced-ui-implementation). One workflow, parameterized by the change's own
+tasks.md — the change file IS the variant.
+
 ## When to Use
-Use this skill when implementing OpenSpec changes that involve:
-- Design token systems and CSS custom properties
-- Reusable component libraries (Card, Button, Heading, Text)
-- Accessibility attribute implementation
-- Svelte 5 with TypeScript
-- WordPress REST API integration
-- UI/UX enhancement projects
+
+Implementing an OpenSpec change that involves any of:
+- Design token systems (CSS custom properties, utility functions)
+- Reusable component libraries (Card, Button, Heading, Text, Badge, Avatar, Divider)
+- Accessibility attribute work (ARIA, keyboard, focus management)
+- TypeScript interface extension and API integration
+- Multi-phase, artifact-driven implementation
 
 ## Procedure
-1. **Setup and Discovery**
-   - Use `opsx status` to check available changes and their status
-   - Locate change directory using CLI output
-   - Read all context files (design.md, proposal.md, specs/*.md, tasks.md)
-   - Check current project structure and existing components
 
-2. **Design Token Implementation**
-   - Enhance CSS custom properties in `src/app.css`
-   - Implement comprehensive color tokens (primary, secondary, accent, semantic, neutral)
-   - Add typography tokens (sizes, weights, line heights, spacing)
-   - Create spacing and layout tokens
-   - Add component-specific tokens (buttons, cards, forms)
-   - Create utility functions in `src/lib/utils/design-tokens.ts`
+### Phase 1 — Setup and Discovery
+1. `opsx status` → locate the change directory; never assume the path.
+2. Read ALL context files: proposal.md, design.md, specs/\*.md, tasks.md.
+3. Survey current project structure, existing components, and the existing
+   token system before adding anything.
 
-3. **Component Development**
-   - Create base components using design tokens
-   - Implement accessibility attributes (role, aria-label, tabindex)
-   - Use TypeScript properly with Svelte 5 syntax
-   - Handle events and props correctly
-   - Test component functionality
+### Phase 2 — Design Token System (if the change touches design)
+1. Enhance CSS custom properties (`src/app.css`): color, typography, spacing,
+   component-specific tokens, responsive variants.
+2. Extend token utilities (`src/lib/utils/design-tokens.*`): extraction,
+   theme management, validation.
+3. **Consistency rule**: use the existing token naming conventions; a
+   conflicting parallel convention is a defect, not a style choice.
 
-4. **Integration and Testing**
-   - Update existing components to use new design system
-   - Ensure accessibility compliance
-   - Test with different screen sizes and devices
-   - Verify WordPress REST API integration
+### Phase 3 — Base Components
+1. Create/extend base components from design tokens (variants, slots).
+2. Accessibility: ARIA attributes/roles, keyboard navigation, focus
+   management, screen-reader labels — bind attributes to real elements.
+3. Svelte 5: runes and reactive patterns; proper event handling (never
+   `$$dispatch` / `$$props` legacy patterns); no `this` references.
+4. Unit tests per component: rendering, events, a11y, responsive.
 
-## Pitfalls to Avoid
-- **Directory Navigation Issues**: Use CLI commands to find change directory, don't assume directory structure
-- **TypeScript Errors**: Avoid `this` references in Svelte components, use proper event handling
-- **Accessibility Props**: Bind all accessibility attributes to HTML elements to avoid unused export warnings
-- **Design Token Consistency**: Use existing token system, don't create conflicting naming conventions
-- **Svelte 5 Syntax**: Use proper runes and reactive declarations
+### Phase 4 — TypeScript Interfaces and API Integration
+1. Extend TypeScript interfaces for the data the change introduces.
+2. API layer: fetch functions with validation, sanitization, error fallbacks,
+   caching where performance matters.
+3. Supporting utilities (data-validation, error-handling, caching) before the
+   components that need them.
+
+### Phase 5 — Enhanced Components and Integration
+1. Build the change's specific components from base components + tokens.
+2. Migrate existing components to the token system (replace hardcoded CSS).
+3. Integration tests: API data flows, user interaction, a11y compliance.
+
+### Phase 6 — Verification
+1. `npm run build` — zero compilation errors.
+2. `npm run check` (or `tsc`) — type-clean.
+3. Full test suites; a11y tooling pass.
+4. Performance: bundle size, loading, cache effectiveness.
+5. `--check --diff` replay of the change's verification steps.
+
+## Pitfalls
+
+- **Directory assumptions**: locate the change dir via CLI output every time.
+- **Svelte 5 syntax**: modern runes; avoid `this` refs; correct export structure.
+- **Type safety**: fully typed props and interfaces; no `any` escape hatches
+  for API data — validate and sanitize instead.
+- **Test typing**: simplified data structures in test fixtures to avoid type
+  conflicts; mock external dependencies properly.
+- **Token drift**: tokens before components, always; never hardcode what a
+  token exists for.
 
 ## Verification
-- Build project successfully with no TypeScript errors
-- All components render correctly with proper styling
-- Accessibility attributes are properly implemented and functional
-- Design tokens are applied consistently across components
-- WordPress REST API data displays correctly
+
+- Build + type-check green; all tests pass.
+- Accessibility attributes functional (not just present).
+- Design tokens applied consistently; no hardcoded values surviving.
+- OpenSpec change tasks all marked complete; specs merged per
+  `openspec-sync-specs` when archiving.
