@@ -1,5 +1,9 @@
 # wiki.toml Schema Reference
 
+> Standalone manual wikis only. For an extension-managed vault, follow its
+> existing config.json, schema, and templates; do not apply these layouts or
+> manually maintain generated metadata. See [manual operation](manual-operation.md).
+
 Reference document for the `llm-wiki` skill. Load when creating or interpreting `wiki.toml`.
 
 ## Minimal wiki.toml

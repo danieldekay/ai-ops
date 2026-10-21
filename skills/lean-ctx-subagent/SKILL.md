@@ -41,8 +41,20 @@ do not build dispatch on them.
 
 ### 1. Parent: curate the brief (before spawning)
 
+> **3.11 update (measured 2026-10-21, lean-ctx 3.11.4):** first-class agent
+> identities now exist on the CLI: `lean-ctx agent register --id <id> --role
+> coder --owner daniel@kaesmayr.net` → `agent suspend|decommission <id>`.
+> The old ground truth "CLI agent commands do not exist" expired with 3.11.
+> The AGENTS.md child carve-out was updated accordingly (2026-10-21): children
+> register at session start and decommission at exit — unregistered children
+> show as "unknown" in the AGENTS panel. The MCP coordination tools
+> (`ctx_agent`/`ctx_task`) remain hidden substrate and stay off-limits for
+> dispatch.
+
 Run `ctx_overview(task)` and/or `ctx_compose(task)` yourself — you have the MCP
 tools and they are 10× cheaper than the child's CLI equivalents. Extract:
+
+- a fresh agent id for the child: `pi-<agent-name>-<6char>` (e.g. `pi-worker-shell-a1b2c3`)
 
 - 2–4 vetted file paths (verify they exist and are the RIGHT ones — a wrong brief
   costs the child one targeted grep, not a fail)
@@ -68,7 +80,14 @@ CLI discipline (you have no MCP ctx_* tools):
 - Report findings for parallel siblings: lean-ctx knowledge remember "<finding>" (short-term only)
 - Durable conclusions: report them back in your output — the parent files them in the wiki
 Verify your own work — run the gate tool before reporting DONE.
+
+Identity (3.11+): register your agent id as your first step and decommission at exit:
+lean-ctx agent register --id <agent-id-from-parent> --role coder --owner daniel@kaesmayr.net
+lean-ctx agent decommission <agent-id>   # on completion; `agent suspend <id> --reason` on early exit
 ```
+
+Each run gets a fresh id; never reuse ids across runs. If `agent register`
+does not exist in the installed lean-ctx (< 3.11), skip silently.
 
 ### 3. Parent: verify
 
@@ -111,3 +130,33 @@ write a markdown brief file and pass its path in the child prompt.
 No lean-ctx CLI available in the child → same recipe minus the CLI lines: brief in
 prompt, native tools, verify gates yourself. The brief is the mechanism; lean-ctx
 CLI in the child is a compression aid, not the handoff channel.
+
+## Parallel-lane implementation (measured 2026-10-06, kg-parallel-ingest)
+
+For multi-lane implementation in one checkout, partition by FILE OWNERSHIP and
+run disjoint lanes in parallel — no worktrees needed:
+
+1. Parent pre-reads the codebase and puts exact anchors in each brief:
+   file paths + line numbers of every function the lane touches, the CLI
+   surface, vocabulary sets, and any format maps (e.g. bucket→heading maps).
+   A child with anchors skips exploration entirely.
+2. One lane per file set; lanes never touch another lane's files. Doc lanes
+   document the TARGET surface from design.md, not current code.
+3. Dependent lanes sequence inside one workflow script: `const [a, c] =
+   await Promise.all([runs.run(A), runs.run(C)])`, then lane B only if A's
+   output lacks ABORT. B preconditions on grepping for A's landed symbols.
+4. Every lane commits PATHSPEC-scoped to its own files only
+   (`git add <own> && git commit -- <own>`) — this is what kept a concurrent
+   foreign session's bd-init commit from clobbering lane work mid-run.
+5. Parent NEVER trusts DONE: re-run every gate itself, `git log --oneline`
+   for attribution, and `git status` for scope creep. Corpus-count
+   discrepancies between lanes (731 vs 952 nodes) were a concurrent
+   session's promotion, not a bug — check `git log` before diagnosing.
+6. Merge/registration tests run only on /tmp copies of the repo (.git
+   included); the real shared data files are never touched by test runs.
+
+## Dispatch failure protocol (validated 2026-10-04, round-9 FB session)
+
+- PROBE-FIRST IS MANDATORY: before fanning out, verify each child's fork session first-user-text is the real task (6-char "Task: " = the empty-task sticky emission). With sticky emission active, the only reliable delivery channel is the supervisor reply: let the child block on its supervisor request, answer with "read <brief-path> and execute it exactly".
+- Check the known-failure skill (subagent-workflowscript-triage) at the FIRST subagent rejection — identical repeated rejections are a documented signature, not a transient error.
+- lean-ctx has no line-numbered read: `lean-ctx raw` is a shell wrapper (a file path executes as a command) and `lean-ctx read` emits no line numbers. Reviewer lanes citing file:line evidence use the native read tool for evidence (lean-ctx read for orientation, `lean-ctx raw "sed -n 'X,Yp'"` for exact windows).

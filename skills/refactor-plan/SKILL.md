@@ -1,9 +1,9 @@
 ---
 name: refactor-plan
-description: 'Create a concrete plan before starting a multi-file refactor using LeanCTX impact analysis + SymDex call-graph tracing. Use when the user asks to plan, sequence, scope, or safely execute a refactor across multiple files.'
+description: 'Plan a multi-file refactor, then execute it with lean-ctx. Use when the user asks to plan, sequence, scope, rename, move, inline, safe-delete, or safely execute a refactor — including any use of ctx_refactor, ctx_impact, or a project-wide symbol rename.'
 author: Daniel Kaesmayr
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   category: dev
 ---
 
@@ -43,9 +43,10 @@ Create a detailed plan before making any code changes using **efficient tools fi
 | 7 | `ctx_search action=semantic` | BM25 search by meaning |
 | 8 | `ctx_graph action=related` | BFS blast radius from a file |
 | 9 | `ctx_graph action=impact` | Reverse dep analysis |
-| 10 | `ctx_impact` | Deep change impact: trace dep chains + build graphs |
-| 11 | `ctx_review action=review` | Full review: impact + callers + test discovery |
-| 12 | `ctx_quality action=report` | Project health score + hotspots |
+| 10 | `ctx_call name=ctx_impact action=analyze` | File blast radius before editing |
+| 11 | `ctx_call name=ctx_refactor` | Symbol navigation and mutation (see below) |
+| 12 | `ctx_review action=review` | Full review: impact + callers + test discovery |
+| 13 | `ctx_quality action=report` | Project health score + hotspots |
 
 ### Alternative: LeanCTX CLI (when MCP unavailable)
 
@@ -125,3 +126,55 @@ If something fails:
 1. [Step to undo]
 2. [Step to undo]
 ```
+
+## Execute only after the plan is confirmed
+
+`ctx_refactor` is not in the default MCP tool list. Call it with `ctx_call`. It renames, moves, and deletes symbols. It does not discover them — use `ctx_search action=symbol` or `ctx_compose` for that. A one-file text swap belongs in `ctx_edit` or the host editor.
+
+`select_backend` picks one of three paths per call:
+
+| Backend | Available when | Use it for |
+|---|---|---|
+| Headless | Always | `symbols_overview` (tree-sitter). Body writes: `replace_symbol_body`, `insert_before_symbol`, `insert_after_symbol`. |
+| Language server | A server is running | `references`, `definition`, `implementations`. |
+| JetBrains plugin | Port file exists, PID is alive, and `GET /health` succeeds | `rename`, `move`, `safe_delete`, `inline` (preview and apply), `reformat`, `inspections`, `declaration`. |
+
+Project-wide rename, move, safe delete, and inline have no headless path. If the IDE check fails they return `BACKEND_REQUIRED`. The message says "rename requires a running JetBrains IDE" for delete and inline too. Do not retry the apply. Say the IDE path is down and edit the declaration plus the callers you already listed.
+
+### Coordinates and hashes
+
+- `line` is 1-based. `column` is 0-based and points at the symbol name.
+- `references` with no `column` can return no results even when the symbol exists. Always pass `column`.
+- Body writes take `new_text` (not `new_body`) and `expected_hash`, the BLAKE3 of the current range. A mismatch is `CONFLICT`.
+- Address a body edit with `name_path` (`Class/method` or a bare name). If the name is ambiguous, pass `file` or qualify it. `AMBIGUOUS_SYMBOL` and `NO_SYMBOL` mean the path matched more than one symbol or none.
+- `move_preview` requires `line` even when `path` is set. Argument checks run before the backend check.
+
+### Two-phase writes
+
+`rename`, `move`, `safe_delete`, and `inline` are preview, then apply.
+
+1. Preview collects usages and conflicts and returns `plan_hash`.
+2. Apply sends that hash and writes every touched file as one transaction.
+3. Hash drift, or conflicts with `force` left false, returns `CONFLICT`.
+4. `inline` cannot be forced.
+5. `safe_delete` with `propagate=true` also removes unreferenced dependencies.
+6. `search_comments` and `search_text_occurrences` extend a rename into comments and non-code text.
+
+Show the preview (usages, conflicts, `plan_hash`) and wait for confirmation before apply.
+
+### Python language server (verified lean-ctx 3.11.4, 2026-10-20)
+
+pylsp is auto-detected. `basedpyright` on PATH is not what `ctx_refactor` calls. There may be no `[lsp]` block in config.
+
+- `implementations` → `UNSUPPORTED` (no `textDocument/implementation`).
+- `type_hierarchy` is attempted on pylsp and fails (no `prepareTypeHierarchy`). That is not evidence of zero subtypes. Docs call this JetBrains-only; use `ctx_callgraph` or a text search of the base class instead.
+- `declaration` and `inspections` require JetBrains.
+- `ctx_impact action=analyze` is file-level. Its file list and its "semantic check" count are different numbers. The count is a pylsp spot-check, not the length of the file list. Use the file list for blast radius and `references` (with `column`) for symbol occurrences.
+
+### Order after confirmation
+
+1. `ctx_impact action=analyze` on each file you will change (`depth` default 5; `diff` compares git refs; `chain` traces from one file to another).
+2. `ctx_refactor action=references` with `line` and `column` before any rename.
+3. JetBrains up: `rename_preview` (or `move_preview` / `safe_delete_preview` / `inline_preview`) → show the plan → apply with `plan_hash`.
+4. JetBrains down: headless body edit with `expected_hash`, or a host edit of the declaration and the callers from the plan. Do not claim a project-wide rename happened.
+5. Re-run `references` or `ctx_impact`, then the project's tests.
