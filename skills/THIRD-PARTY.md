@@ -27,6 +27,8 @@ skill** (owned, references the original) — existing examples in
 | lean-ctx | `yvgude/lean-ctx/skills/` | context-engineering CLI/MCP usage | |
 | skill-auditor | `useai-pro/openclaw-skills-security/skills/` | security audit before installing foreign skills | run before any new third-party install |
 | agent-browser | `vercel-labs/agent-browser/` | browser automation CLI | cross-runtime |
+| skill-creator | `anthropics/skills/skills/skill-creator/` | heavy skill authoring/evals/benchmarks | confirmed 2026-10-21, declared globally |
+| clean-code | `jackjin1997/ClawForge/skills/clean-code/` | Robert C. Martin Clean Code principles | confirmed via frontmatter source line, declared globally |
 | awesome-copilot instructions | `github/awesome-copilot/` | community instruction pack | agent-skills target |
 
 ## Project-scoped (declared in repo `apm.yml`, e.g. the ansible repo)
@@ -39,18 +41,22 @@ skill** (owned, references the original) — existing examples in
 | zigbee2mqtt | `szkocot/skills/` | Z2M converters, device pairing |
 | avoid-ai-writing | `conorbronsdon/avoid-ai-writing/` | AI-ism detection/rewriting (vendored copy excluded from pre-commit) |
 
-## Manually managed (liked, but source not yet APM-declared)
+## Fleet-authored (no upstream found — GitHub search 2026-10-21)
 
-Tracked in the "Manually managed" section at the bottom of `~/.apm/apm.yml`:
+These live only in `~/.agents/skills/` and were written by Daniel's agent fleet.
+Source-confirmation pass found no matching upstream. **Next step: canonicalize
+into `danieldekay/ai-ops/skills/`, then declare via APM** (same as the
+navigators and end-session-hygiene were):
 
-| Skill | Source (probable) | Notes |
-|---|---|---|
-| skill-creator | `anthropics/skills` | heavy skill authoring/evals |
-| agent-development | `anthropics/claude-code` | subagent frontmatter guidance |
-| lean-ctx-handoff | local (machinery aspirational) | signed handoff — see end-session-hygiene note |
-| find-skills, lesson-learned, compound-learnings, self-learning | TBD | source unconfirmed |
-| clean-code, clean-architecture | TBD | Robert C. Martin derived |
-| zettelkasten, zettelkasten-mcp | local/TBD | ZK knowledge management |
+`agent-development` · `find-skills` · `lesson-learned` · `compound-learnings` ·
+`self-learning` · `ontology` · `agentic-eval` · `debugging-strategies` ·
+`uncle-bob-craft` · `lean-ctx-handoff` · `clean-architecture` (NOT in
+ClawForge despite same pack style) · `zettelkasten` · `zettelkasten-mcp`
+(documents the third-party `entanglr/zettelkasten-mcp` server, but the skill
+itself is authored docs)
+
+Also authored + already canonical in ai-ops: `zettelkasten-orchestrator`
+(committed 2026-10, declared globally).
 
 ## Superseded / retired
 
