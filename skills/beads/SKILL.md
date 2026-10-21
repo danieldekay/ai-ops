@@ -78,3 +78,21 @@ Use agent-local planning tools only for the current turn's execution checklist. 
 - Prefer `--json` when parsing `bd` output programmatically.
 - If hooks are installed, `bd prime` may already be injected. Run it manually when context is missing.
 - Do not auto-close or mutate tasks unless the work is actually complete.
+
+## Molecules (workflow lifecycle wrappers)
+
+If the repo has `.beads/formulas/`, check whether a molecule should be poured alongside seeding.
+
+```bash
+bd mol show <formula-name>   # inspect available formulas
+```
+
+For OpenSpec-based projects the `openspec-change` formula wraps the full
+planning → implementation → verify → archive lifecycle. Seeding task beads
+with a script is **Step 1 only**; the molecule (`bd mol pour openspec-change ...`)
+adds gate steps and `bd mol current <mol-id>` lifecycle tracking.
+
+After pouring for an already-planned change, immediately close the completed
+planning steps (intake → proposal → specs → design → tasks → gate → human_design_gate → task_import)
+so the molecule lands on `implementation_fanout` as the active step.
+Gate close order: the gate bead must close before the task that depends on it.
