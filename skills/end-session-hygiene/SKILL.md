@@ -5,10 +5,14 @@ description: >
   before we finish, or otherwise signals they are ending a work session.
   Runs a retro with behavior/thinking-flaw analysis that turns recurring
   flaws into permanent prevention (failure memory, skill patch, rule), not
-  just a handoff note.
+  just a handoff note. Also checks whether the current repo uses beads or
+  GitHub issues so deferred work can be scheduled as tasks for later, and
+  a skill-health check (new skills needed, existing skills to improve,
+  overlay skills for skills we don't author). References the existing
+  `handoff` (structured block format) skill for the handoff part.
 author: Daniel Kaesmayr
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
   category: meta
 ---
 
@@ -169,13 +173,34 @@ Route each candidate learning with this table:
 3. Apply all confirmed or already-authorized writes in one batch.
 4. Route carefully, but do not repeat a confirmation round the user has already completed.
 
-## Pass 5 — Open-work check
+## Pass 5 — Open-work check + task scheduling
 
 Determine whether work is still open:
 
 - `git status --porcelain` — dirty tree or unpushed commits?
 - Unfinished tasks: goal state, plan/TODO items, `bd ready --json` when beads are in play
 - The user said the work continues in another session
+
+### Detect the repo's task systems (schedule deferred work instead of losing it)
+
+Check what the current repo actually uses — deferred items land there, not
+just in a chat handoff:
+
+1. **Beads**: `.beads/` exists → the repo uses beads. Offer to schedule each
+   deferred item: `bd create "<title>" --description "<what+why>"` (or the
+   `beads` skill's conventions). Check `bd ready --json` for already-open work
+   to avoid duplicates.
+2. **GitHub issues**: the remote is GitHub (`git remote get-url origin` →
+   github.com) → offer `gh issue create` for deferred items (use the
+   structured `gh_issue` tool on pi). Prefer issues for user-visible or
+   cross-session work; prefer beads for repo-internal task graphs with
+   dependencies.
+3. **Neither**: fall back to the handoff block's `What Remains` section.
+
+Rules: ask before creating issues/beads (state-changing, repo convention);
+batch proposals into the same confirmation round as Pass 4; one issue/bead per
+deferred item, title + 2-line body with the why and the resume coordinates;
+never schedule task progress or session state — only genuine follow-up work.
 
 If everything is clean and done → do the final checklist below and finish.
 If work is open → continue to Pass 6.
@@ -188,17 +213,14 @@ was documented by lean-ctx but is NOT INSTALLED: validated 2026-09-20 — the
 entry) and the MCP tool is absent. **Go straight to the markdown fallback.**
 Session state still persists via tools that DO exist: `lean-ctx session
 task|finding|decision` + `lean-ctx session save` (CLI, validated), and
-durable facts via `ctx_knowledge` remember / `memory_add`.
-
-~~Preferred — lean-ctx machinery~~ (NOT AVAILABLE — kept for reference; see the
-`lean-ctx-handoff` skill, whose machinery is likewise aspirational):
+durable facts via `ctx_knowledge` remember / `memory_add`. (The
+`lean-ctx-handoff` skill was retired 2026-10-21 — its machinery never
+shipped; this fallback is the only handoff mechanism.)
 
 1. `ctx_knowledge` `remember` the durable facts FIRST — they survive even if
    the bundle is lost.
 2. `ctx_session` `task` / `decision` — current progress status + decision rationale.
-3. ~~`ctx_read` + `ctx_handoff` `create`~~ — N/A, command does not exist.
-4. ~~`ctx_handoff` `export`~~ — N/A.
-5. Output the markdown block in chat. Only write it to a repo path when the user explicitly asks for a handoff file.
+3. Output the markdown block in chat. Only write it to a repo path when the user explicitly asks for a handoff file.
 
 **Fallback — structured markdown block** (format from the `handoff` skill),
 paste-ready for the next agent:
@@ -239,7 +261,11 @@ Handoff rules (from `handoff`, kept because they are always right):
 
 - Reference commits and file paths, not code — the receiver reads the diffs.
 - "What remains" must be actionable NOW: no conditional timing ("only after X
-  merges" is forbidden — give a path/SHA that works immediately or defer).
+  merges" is forbidden — give a path/SHA that works immediately, or schedule
+  it via Pass 5's beads/gh-issues detection instead of prose). Deferred work
+  has a better home than prose: if Pass 5 detected beads or GitHub issues,
+  scheduled tasks replace the `What Remains` prose (keep the section for
+  anything NOT schedulable).
 - Flag decisions made and pre-existing issues so they don't get re-litigated.
 - Structured, not narrative. No walls of prose.
 
@@ -247,6 +273,7 @@ Handoff rules (from `handoff`, kept because they are always right):
 
 - [ ] Durable Codex learning, when authorized, saved as Wiki evidence plus a concise Codex note with its Wiki path
 - [ ] Retro light run; durable items routed, `🚀 Next time` items landed in handoff / session state
+- [ ] Task-system detection run: beads/gh-issues checked, deferred work scheduled with confirmation (or explicit "no task system / nothing to schedule")
 - [ ] Behavior analysis run: flaws root-caused, recurrence checked against failure memory, prevention mechanisms proposed and confirmed (or explicit "no flaws observed")
 - [ ] Skill health check run and proposals resolved
 - [ ] Handoff output in chat if work was open; written to a repo path only if the user asked
@@ -270,5 +297,3 @@ Handoff rules (from `handoff`, kept because they are always right):
 - **Don't ask twice** — preserve explicit user authorization for the same write and destinations.
 - **Skill-health proposals are proposals too** — write only after approval, and don't edit third-party skills in place; use an overlay.
 - **Handoff is not a diary** — keep it structured and coordinates-first.
-- **Import is additive** — when resuming a lean-ctx handoff, reconcile rather
-  than replace (detail lives in `lean-ctx-handoff`).
