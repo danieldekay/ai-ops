@@ -53,9 +53,13 @@ These live only in `~/.agents/skills/` and were written by Daniel's agent fleet.
 APM** (same as the navigators and end-session-hygiene were):
 
 `agent-development` (probable fuxicodex/Fuxi or sickn33 origin, path unverified) ·
-`ontology` · `lean-ctx-handoff` · `clean-architecture` (NOT in ClawForge despite
-same pack style) · `zettelkasten` · `zettelkasten-mcp` (documents the third-party
-`entanglr/zettelkasten-mcp` server, but the skill itself is authored docs)
+`ontology` · `clean-architecture` (NOT in ClawForge despite same pack style)
+
+Consolidated 2026-10-21 (no longer pending): `zettelkasten` + `zettelkasten-mcp`
+→ one canonical `zettelkasten` v2.0.0; `deep-research` v1 + `dk.v2.deep-research`
+→ one `deep-research` v3.0.0; 7 navigator routers → one `navigator` v2.0.0;
+`lean-ctx-handoff` and `context-mode` retired; `self-learning` re-authored
+v2.0.0 (wiki-first, harness-agnostic).
 
 Also authored + already canonical in ai-ops: `zettelkasten-orchestrator`
 (committed 2026-10, declared globally).
