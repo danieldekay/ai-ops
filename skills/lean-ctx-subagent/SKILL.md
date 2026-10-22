@@ -95,6 +95,20 @@ Subagent claims are not evidence. Re-run the gate tool yourself (`ruff`,
 `basedpyright`, `pytest --co`), check `git diff` for scope creep and over-deletion,
 and grep for references to any moved/deleted symbol.
 
+Two hardened rules (2026-10-22, repeat warden corrections):
+
+- **Relayed causal claims need own reproduction.** A child's root-cause/diagnosis
+  statement ("pre-existing bug", "env gap", "load-order issue") is a claim, not a
+  finding. Reproduce it with your own command, quote your own output, and mark
+  anything you did not check as unverified with the reason. Detect the refined
+  version of the claim too — e.g. "pre-existing" is only provable back to the
+  last change you actually inspected, not to the bug's true onset.
+- **Brief claims must be read from disk before dispatch.** Do not characterize
+  changes/flags (e.g. "declares skip_specs", file paths, task counts) from list
+  output or impressions; read the change dirs/files and verify every factual
+  statement in the brief. Wrong brief facts cost a supervisor round-trip or a
+  blocked child.
+
 ## Memory routing
 
 - **Long-term/durable → LLM wiki**: parent files child findings via `wiki_observe`
@@ -124,6 +138,15 @@ write a markdown brief file and pass its path in the child prompt.
 - ❌ Recording durable facts with `lean-ctx knowledge remember` — store is noise-polluted; use wiki
 - ❌ Running `lean-ctx knowledge consolidate` (or `--all`) after cleaning the knowledge store — it re-imports the session diary as new facts and re-creates the junk (measured: 0 facts → 7 immediately). If a clean is needed, remove items and skip consolidate; never consolidate as a "tidy-up" step.
 - ❌ Trusting "DONE" without re-running the gate tool yourself
+- ❌ Dispatching without the `task` field present in the call (validated 2026-10-21,
+  7 occurrences in one session): async single-child calls arrive with an EMPTY
+  task ("Task:" signature, taskHash sha256("")) when the field is omitted or
+  the call shape is fumbled (e.g. `agent` passed where `workflow: true` was
+  intended). The child correctly refuses to improvise and blocks. Recovery:
+  deliver the real brief via `subagent_supervisor` reply to the child's
+  supervisor ask — that channel worked every time. Prevention: include `task`
+  in EVERY dispatch, and verify the child's fork first-message is the real
+  brief before waiting (probe-first below is mandatory, not advisory).
 
 ## Fallback
 
@@ -158,5 +181,6 @@ run disjoint lanes in parallel — no worktrees needed:
 ## Dispatch failure protocol (validated 2026-10-04, round-9 FB session)
 
 - PROBE-FIRST IS MANDATORY: before fanning out, verify each child's fork session first-user-text is the real task (6-char "Task: " = the empty-task sticky emission). With sticky emission active, the only reliable delivery channel is the supervisor reply: let the child block on its supervisor request, answer with "read <brief-path> and execute it exactly".
+- **Self-inflicted empty-task variant (added 2026-10-21):** empty briefs are usually the DISPATCHER's own omission (task field missing, `agent` passed instead of `workflow: true`) — fix the call, don't blame the harness. Verified recovery: reply to the blocked child's supervisor ask with the full brief; steer only works for running (non-blocked) children.
 - Check the known-failure skill (subagent-workflowscript-triage) at the FIRST subagent rejection — identical repeated rejections are a documented signature, not a transient error.
 - lean-ctx has no line-numbered read: `lean-ctx raw` is a shell wrapper (a file path executes as a command) and `lean-ctx read` emits no line numbers. Reviewer lanes citing file:line evidence use the native read tool for evidence (lean-ctx read for orientation, `lean-ctx raw "sed -n 'X,Yp'"` for exact windows).
