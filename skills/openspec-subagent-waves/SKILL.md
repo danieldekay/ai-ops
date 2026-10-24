@@ -12,7 +12,7 @@ author: Daniel Kaesmayr
 metadata:
   version: "1.0.0"
   category: dev
-  validated: 2026-10-24 (tmd_theme: event-type-visual-language + explorer-client-interaction)
+  validated: "2026-10-24 tmd_theme ETVL + ECI session"
 ---
 
 # OpenSpec Subagent Waves
