@@ -82,3 +82,19 @@ git; children own scoped edits and gates.
 - **Fixtures after baselines, always.** Fixture events created for DOM
   assertions must not appear in refreshed pixel baselines; prefix fixtures
   (qa-etvl-) and record their IDs for cleanup.
+- **Contract blocks specify behavior invariants, not internal mechanisms.**
+  The tmd_theme archive-browse-parity contract said "any filter param forces
+  page 1 server-side" — a mechanism that broke /page/N/ deep links AND the
+  canonical URL (two layers, found only by the e2e lane). State the invariant
+  ("URL X serves content Y", "commits land on page 1 because their URLs carry
+  no page path") and name the ONE enforcement point; before adding
+  server-side enforcement, ask what breaks for direct URL visits (deep
+  links, sharing, Back/Forward). Two enforcement points for one rule always
+  diverge.
+- **Hunk-split patches must be regenerated from the real diff.** Hand-written
+  unified diffs against a shared file (e.g. functions.php carrying foreign
+  dirty hunks) don't apply. Working sequence: git diff <file> > /tmp/full.diff
+  → filter out the foreign hunks with a script FILE (awk/sed, not one-liners)
+  → git apply --cached --recount /tmp/ours.diff → verify with git diff
+  --cached <file> that ONLY your hunks are staged and foreign edits remain
+  unstaged. --recount absorbs the line-count drift from removed foreign lines.
