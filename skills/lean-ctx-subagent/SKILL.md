@@ -178,6 +178,7 @@ write a markdown brief file and pass its path in the child prompt.
 - After a `BLOCKED` result or repeated failure on the same command pattern, stop retrying variants of the same failed approach. Change the method, narrow the probe, or use a structured tool.
 - Prefer a structured tool (read/search/edit/runner) over ad-hoc shell pipelines when the tool can answer the question directly.
 - If the task requires shell access, the brief must say so up front and the child must name its effective `shell: true|false` state before editing.
+- Never put backticks or `$(...)` inside a shell `-m` / `-c` argument: the shell substitutes them before the tool sees the text. A `git commit -m "...`metric`..."` silently dropped the word (measured 2026-10-24). Write the message/body to a file and pass the file (`git commit -F /tmp/msg`).
 
 - ❌ Mandating `lean-ctx overview` in a scoped child task — 15K tok of tree, zero task signal
 - ❌ Child runs `lean-ctx session task` — clobbers the parent's triage signal

@@ -128,8 +128,10 @@ Did this session reveal that the skill library itself needs work? Check three th
    portable practices and project scope for repo-bound ones.
 2. **Existing skill to improve?** For every skill used—or missed when it should have
    applied—check whether it misled, missed a step, had stale facts, or failed to trigger.
-   Propose a targeted patch to the canonical authored source, and update installed copies
-   through `skill-management`.
+   Propose a targeted patch to the canonical authored source, then publish it with
+   `skill-publish-flow`: commit + push ai-ops, declare it in the global manifest `~/.apm/apm.yml`,
+   run `apm update --global --yes` then `apm install -g --force`, and verify with `diff -rq`.
+   Never edit the installed copies directly — they are build output and the next install overwrites them.
 3. **Overlay needed?** For a third-party/APM-installed skill, do not edit the dependency
    as authored IP. Propose an owned overlay that references it and adds Daniel's conventions.
 
@@ -152,7 +154,7 @@ Route each candidate learning with this table:
 | Durable project fact / decision / convention | Project source-of-truth or project memory; in Codex, pair useful Wiki detail with a concise note pointer. |
 | Global tool quirk / environment fact | Wiki detail plus a concise Codex note when it should shape future Codex work; other harnesses follow their owner policy. |
 | Failure lesson | Active harness's approved failure store; in Codex, Wiki lesson plus concise note when reusable or actionable. |
-| Reusable multi-step procedure | Author at the canonical skill source; deploy installed copies through `skill-management`. |
+| Reusable multi-step procedure | Author at the canonical skill source; publish via `skill-publish-flow` (ai-ops → `~/.apm/apm.yml` → `apm install`), never by editing installed copies. |
 | Wiki-worthy insight / observation | `wiki_retro` (atomic insight) or `wiki_observe` (session observation). |
 | Planning status change | The repo's live status doc (e.g. `plan/PROJECT-STATUS.md`). |
 | Transient session state | Session layer only (`ctx_session` task/finding/decision) — never permanent memory. |
