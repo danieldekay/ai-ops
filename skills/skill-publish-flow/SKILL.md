@@ -20,8 +20,15 @@ metadata:
 | Layer | Location | Versioned? |
 |---|---|---|
 | Canonical (source of truth) | `~/coding/ai-ops/skills/<name>/SKILL.md` | yes — git |
-| APM registry/manifest | `apm.yml` + `apm.lock.yaml` in the ai-ops repo | yes — git (lockfile pins resolved SHAs) |
+| APM registry/manifest | `~/.apm/apm.yml` (global, `targets: agent-skills`) sets the global allowlist; the ai-ops repo `apm.yml` + `apm.lock.yaml` govern project deploys | yes — git (lockfile pins resolved SHAs) |
 | Installed | `~/.agents/skills/<name>/SKILL.md` | **no** — plain directory, not under git |
+
+Publishing is **two-layer**, not one: the skill must (a) exist in the canonical
+repo AND (b) be DECLARED in the global manifest `~/.apm/apm.yml`
+(`dependencies: apm:` list, one line `- danieldekay/ai-ops/skills/<name>/`,
+targets `agent-skills`). Undeclared skills never deploy — `apm install -g
+--force` still reports success (measured 2026-10-24: two new skills silently
+failed to appear for exactly this reason).
 
 ## The binding rule
 
@@ -42,17 +49,27 @@ copy alone.
    git -C ~/coding/ai-ops commit -m "skills: <what changed>"
    git -C ~/coding/ai-ops push
    ```
-3. Refresh the APM index from the origin (this fetches the new commit; it can
-   take several minutes — use a timeout of at least 120 s, prefer 300–600 s):
+3. **Declare the skill in the global manifest** if it is not already declared:
+   add `- danieldekay/ai-ops/skills/<name>/` to the `dependencies: apm:` list
+   of `~/.apm/apm.yml` (the global `agent-skills` allowlist). A brand-new
+   skill always needs this step; a skill already declared only needs the
+   commit + push. Validate after editing:
+   ```bash
+   apm deps list        # or `apm doctor` — must parse the modified manifest
+   ```
+4. Refresh the APM index from the origin (this fetches the new commit; it can
+take several minutes — use a timeout of at least 120 s, prefer 300–600 s):
    ```bash
    apm update --global --yes
    ```
-4. Reinstall the global target. `install --force` alone does nothing against
-   the old lockfile SHAs, so update always precedes install:
+5. Reinstall the global target. `install --force` alone does nothing against
+the old lockfile SHAs, so update always precedes install:
    ```bash
    apm install -g --force
    ```
-5. Verify installed == canonical for every skill you touched (see below).
+6. Verify installed == canonical for every skill you touched (see below). Do
+   not trust the install's "Installed N dependencies" line — check the
+   specific directory exists and matches canonical.
 
 ## Drift triage
 
@@ -109,6 +126,12 @@ so the installed copy can differ from canonical in the `metadata` block alone.
   `apm.lock.yaml` records the resolved commit of every dependency; install
   re-deploys what the lockfile pins. You must run `apm update` first to move
   the resolution to the new commit, then install.
+- **Undeclared in `~/.apm/apm.yml` → `apm install -g --force` reports
+  success, nothing appears.** The global deploy is an explicit allowlist, not
+  an auto-discover scan of ai-ops. If a canonical skill silently fails to
+  appear in `~/.agents/skills`, first check the manifest, and use
+  `ls ~/.agents/skills | wc -l` + a direct `diff -q` on the skill name as the
+  real signal, not the install banner.
 - **`~/.agents` is not versioned.** Direct edits there are unreviewable,
   unmergeable, and silently destroyed by the next install. It also means
   "uncommitted work" never appears in `git status` — only `diff` against
