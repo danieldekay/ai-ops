@@ -76,6 +76,21 @@ wiki note `concepts/multi-harness-agent-config-management` (Sept 2026).
 3. **Global** → `apm install -g ...` (above). **Project** → add to that repo's
    `apm.yml` + `apm install`.
 
+## Publishing flow (canonical → APM → installed)
+
+The exact command sequence for publishing or patching a skill lives in the
+`skill-publish-flow` skill — use it whenever a skill change needs to reach the
+installed layer. Short version: edit canonical `~/coding/ai-ops/skills/<name>`,
+`git add <paths>` (never `-A`), commit, push, then `apm update --global --yes`
+followed by `apm install -g --force`.
+
+**Third-party skills get OVERLAYS, never in-place edits.** A skill pulled by
+APM as a dependency (e.g. `obra/superpowers/...`) is not ours to patch in the
+installed layer — reinstall overwrites it and authoring hygiene forbids editing
+a dependency as if it were our IP. Author an owned overlay with
+`metadata.overlay_of` pointing at the vendor skill, with a header note stating
+why it exists. See `skill-publish-flow` for the full policy and drift triage.
+
 ## Consolidating ~/.agents/skills (sprawl → curated)
 
 **Automated script (Option B):** `skill_management/scripts/consolidate-skills.sh` in the ai-ops skill dir — dedupes redundant real copies in `~/.pi/agent/skills`, moves stray non-skill files out, and (opt-in) archives an explicit `--archive-file` list. Always dry-run first, always backs up to `~/.agents/.skill-mgmt-backup-<stamp>/`.

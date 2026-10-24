@@ -181,6 +181,20 @@ Determine whether work is still open:
 - Unfinished tasks: goal state, plan/TODO items, `bd ready --json` when beads are in play
 - The user said the work continues in another session
 
+### Bounded wait / deferred verification outcome
+
+Never block the session on a single CI or deploy watch command. Follow this order:
+
+1. Set a hard wait cap: `<= 120s` for a blocking poll unless a supervisor explicitly approves a longer limit.
+2. If the run does not resolve within the cap, record the run id, time, and partial evidence and declare `deferred_verification`.
+3. Leave an open loop with the next action and exact owner; do not idle in a watch loop.
+4. End the session or continue only on a new decision path, never by waiting indefinitely for CI.
+
+A deferred verification is a first-class outcome, not a failure. It must be reported as:
+- `status: deferred_verification`
+- `why: wait cap reached / external dependency / no shell access / blocked by runtime`
+- `next_step: <exact check or rerun>`
+
 ### Detect the repo's task systems (schedule deferred work instead of losing it)
 
 Check what the current repo actually uses — deferred items land there, not

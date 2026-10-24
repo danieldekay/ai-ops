@@ -41,6 +41,24 @@ do not build dispatch on them.
 
 ### 1. Parent: curate the brief (before spawning)
 
+Before any dispatch, the parent must provide a concrete brief that is read from disk and contains:
+
+- `allowed_files`: the exact file set the child may read or edit. No broader exploratory write set is implied.
+- `write_policy`: `no_new_files`, `edit_only`, or `allowed_new_files:<list>`; default is `no_new_files`.
+- `tool_capability`: `shell: true|false`, `git: true|false`, `network: true|false`, and which tools the child actually has.
+- `gate_command`: the exact verification command that proves the task and whether the parent or child runs it.
+- `owner`: who is responsible for each gate or side-effect step.
+
+Parent preflight REQUIRED:
+
+1. Read the brief targets from disk before the child starts.
+2. Run `git status --porcelain` once before dispatch.
+3. Compare every intended path against `allowed_files`. If a path is outside the list, reject the brief; do not delegate.
+4. If `shell: false`, the brief must explicitly name the parent as the only runner for shell/gate commands.
+5. If `shell: true`, the brief must say which commands the child may run, and the child must not invent additional shell actions.
+
+The child must confirm the effective capabilities in its first reply: `allowed_files=...`, `shell=<true|false>`, `gate_owner=<parent|child>`, `write_policy=<...>`, and `git_status_checked=<true|false>`.
+
 > **3.11 update (measured 2026-10-21, lean-ctx 3.11.4):** first-class agent
 > identities now exist on the CLI: `lean-ctx agent register --id <id> --role
 > coder --owner daniel@kaesmayr.net` → `agent suspend|decommission <id>`.
@@ -131,6 +149,15 @@ write a markdown brief file and pass its path in the child prompt.
 
 ## Anti-patterns (all measured)
 
+### Shell-boundary discipline
+
+- One command per tool call. Do not bundle multiple commands into a single shell line.
+- Never use inline interpreters to do one-off logic: no `node -e`, `python3 -c`, `perl -0pi`, or similar one-liners as a substitute for a proper script or tool call.
+- No speculative chained commands (`&&`, `||`, or shell globbing) unless the brief explicitly authorizes the exact sequence and the result is required for the task.
+- After a `BLOCKED` result or repeated failure on the same command pattern, stop retrying variants of the same failed approach. Change the method, narrow the probe, or use a structured tool.
+- Prefer a structured tool (read/search/edit/runner) over ad-hoc shell pipelines when the tool can answer the question directly.
+- If the task requires shell access, the brief must say so up front and the child must name its effective `shell: true|false` state before editing.
+
 - ❌ Mandating `lean-ctx overview` in a scoped child task — 15K tok of tree, zero task signal
 - ❌ Child runs `lean-ctx session task` — clobbers the parent's triage signal
 - ❌ Telling a child to call `ctx_share`/`ctx_compile`/`ctx_agent` — tools don't exist there
@@ -138,6 +165,13 @@ write a markdown brief file and pass its path in the child prompt.
 - ❌ Recording durable facts with `lean-ctx knowledge remember` — store is noise-polluted; use wiki
 - ❌ Running `lean-ctx knowledge consolidate` (or `--all`) after cleaning the knowledge store — it re-imports the session diary as new facts and re-creates the junk (measured: 0 facts → 7 immediately). If a clean is needed, remove items and skip consolidate; never consolidate as a "tidy-up" step.
 - ❌ Trusting "DONE" without re-running the gate tool yourself
+- ❌ Telling a child to switch to the NATIVE `edit` tool after it read files with `ctx_read`
+  (measured 2026-10-23, tmd_core lane): native `edit` requires a prior NATIVE `read` of that
+  exact path, so a lean-ctx-first child deadlocks in a retry loop on "RETRYABLE — Edit without
+  read". Reads through `ctx_read`/`lean-ctx read` do NOT satisfy it. Brief children to edit with
+  `ctx_edit` (no read requirement, `replace_all: true` for repeated patterns), or to call the
+  native `read` immediately before a native `edit`. Same applies to `ctx_patch` anchored ops,
+  which want anchors from `ctx_read(mode="anchored")`.
 - ❌ Dispatching without the `task` field present in the call (validated 2026-10-21,
   7 occurrences in one session): async single-child calls arrive with an EMPTY
   task ("Task:" signature, taskHash sha256("")) when the field is omitted or
