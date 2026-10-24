@@ -240,3 +240,19 @@ run disjoint lanes in parallel — no worktrees needed:
 - **Self-inflicted empty-task variant (added 2026-10-21):** empty briefs are usually the DISPATCHER's own omission (task field missing, `agent` passed instead of `workflow: true`) — fix the call, don't blame the harness. Verified recovery: reply to the blocked child's supervisor ask with the full brief; steer only works for running (non-blocked) children.
 - Check the known-failure skill (subagent-workflowscript-triage) at the FIRST subagent rejection — identical repeated rejections are a documented signature, not a transient error.
 - lean-ctx has no line-numbered read: `lean-ctx raw` is a shell wrapper (a file path executes as a command) and `lean-ctx read` emits no line numbers. Reviewer lanes citing file:line evidence use the native read tool for evidence (lean-ctx read for orientation, `lean-ctx raw "sed -n 'X,Yp'"` for exact windows).
+## Worker capability mismatch (validated 2026-10-24, tmd_theme ETVL/ECI session)
+
+- Some worker profiles resolve WITHOUT a shell tool even when the brief says
+  `shell: true` — three of six children that session could read/write/escalate
+  but never run `npm`, `git`, or `lean-ctx`. The child stalls at the gate and
+  escalates via supervisor (good behavior — the brief told it to).
+- Prevention, in the brief template: (1) state `gate_owner: parent` fallback
+  explicitly — "if your allowlist lacks shell, finish all edits, then escalate
+  the gate via contact_supervisor instead of retrying"; (2) name the exact
+  allowed commands AND the escalation path; (3) do not assume the `coder`
+  agent profile has shell — probe once (first child reply must confirm
+  capabilities) and adapt routing, not the child.
+- Parent-side gate ownership: after a shell-less child lands edits, the PARENT
+  runs the gate commands and steers the result back to the child for its final
+  report. Budget one extra round-trip per shell-less lane.
+
