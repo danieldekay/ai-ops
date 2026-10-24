@@ -12,7 +12,7 @@ description: >
   "deferred verification", "wait cap", "bounded wait".
 author: Daniel Kaesmayr
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: meta
   overlay_of:
     - "obra/superpowers/test-driven-development"
@@ -66,6 +66,15 @@ assertion is not a RED check.
 - Mock at the right level: learn every side effect of the real method before
   replacing it; mock the slow or external operation and keep what the test
   depends on real. When unsure, run the test against the real dependency.
+- **Stub shapes come from the provider's source, never from the consumer's
+  code.** Before stubbing any RPC/event payload, read the emitting function's
+  `return { ... }` in the provider's source and copy the shape verbatim. A
+  stub derived from the consumer's accessor chain validates the consumer's
+  *assumption* — if that assumption is wrong, implementation and test share
+  the same wrong shape and the suite stays green against a broken contract
+  (validated live 2026-10-24: pi-subagents `cost` reply — `total` **is** the
+  usage object; a `.usage`-nested stub passed 5/5 while the widget rendered
+  nothing).
 
 ## 3. Bounded wait / deferred verification
 
