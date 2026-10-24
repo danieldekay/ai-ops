@@ -47,6 +47,8 @@ Before any dispatch, the parent must provide a concrete brief that is read from 
 - `write_policy`: `no_new_files`, `edit_only`, or `allowed_new_files:<list>`; default is `no_new_files`.
 - `tool_capability`: `shell: true|false`, `git: true|false`, `network: true|false`, and which tools the child actually has.
 - `gate_command`: the exact verification command that proves the task and whether the parent or child runs it.
+- `metric`: for any count or "how many" question, the artifact that produces the evidence (file glob, workflow, command) — never a bare number.
+- `metric_excludes`: what that count does not cover. A count without an exclusion list is not evidence.
 - `owner`: who is responsible for each gate or side-effect step.
 
 Parent preflight REQUIRED:
@@ -78,6 +80,25 @@ tools and they are 10× cheaper than the child's CLI equivalents. Extract:
   costs the child one targeted grep, not a fail)
 - one targeted search hint (exact symbol/regex, scoped path)
 - the quality-gate or verification command, if the task mutates code
+
+### 1a. Metric contract — a count must name its evidence artifact (measured 2026-10-24)
+
+A brief that asks "how many X have Y" without naming the artifact that proves it produces correct-but-useless answers.
+
+- Every count metric names the artifact (for example "eval-file contracts under `tests/Integration/` executed by
+  `.github/workflows/v4-wordpress-integration.yml`"), the claim it proves, and `metric_excludes` — what the count
+  does not cover.
+- If you cannot name the artifact, do not ask for a count. Ask for a **list** with files named. A list cannot be
+  over-generalised; a percentage can.
+- Pre-dispatch question: "If the child answers this literally, could the answer be correct and useless?" If yes,
+  rewrite the brief before spawning.
+- The child's first reply line must restate scope: `Measured: <artifact>. Excludes: <what>.`
+
+Worked example (real, 2026-10-24): a brief asked how many of 66 mutating routes had "a test that executes the success
+path". The child measured PHPUnit files under `tests/API` and answered "6–10 of 66". Arithmetically correct, and
+practically wrong: the repository's witness layer is `tests/Integration/*.php` eval-file contracts run through
+`wp eval-file`, which contribute nothing to a PHPUnit count. The corrected metric — production write routes lacking a
+real-WordPress contract — was **4**. Same repo, same day, opposite conclusion.
 
 ### 2. Child prompt template
 
