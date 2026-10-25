@@ -20,7 +20,7 @@ Creating or reviewing openspec change deltas (specs/ blocks), fixing validate/ar
 9. Commit the proposal as its own commit BEFORE dispatching implementation agents; commit implementation pathspec-scoped; commit the archive last and push.
 
 ## Pitfalls
-- No notable pitfalls recorded yet.
+- A wave-edited spec delta must be reconciled against the PARENT ISSUE's desired-order text before `openspec validate --strict` — validate passes against whatever wording is present, not against the issue. Validated 2026-10-25 (gh-117): the implement wave's "clarifying sentence" (G-3) flipped the secondary content order to venue-before-description, contradicting both the shipped template and the issue's own Desired-experience text; the spec-conflict review lens caught it as 2 blockers and the delta had to be re-anchored to the issue reading before commit. Rule: the issue is the WHAT authority; when a wave edits delta wording mid-implementation, the orchestrator re-reads the issue text against the new wording before validation, not after the reviewer.
 
 ## Verification
 1. openspec validate <change> exits clean before archive
