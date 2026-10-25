@@ -1,15 +1,16 @@
 ---
 name: "openspec-delta-authoring"
 description: "Author and archive OpenSpec changes without archive-refusal surprises: MODIFIED deltas must carry ALL existing scenario headers verbatim, docs-only changes need skip_specs: true, delta files live under specs/<capability>/spec.md with ## ADDED/MODIFIED/REMOVED headers. Triggers: \"openspec change\", \"openspec archive\", \"openspec validate failed\", \"MODIFIED omits scenario(s)\", writing spec deltas."
-version: 1
+version: 2
 created: "2026-10-06"
-updated: "2026-10-06"
+updated: "2026-10-25"
 ---
 ## When to Use
 Creating or reviewing openspec change deltas (specs/ blocks), fixing validate/archive aborts, or sweeping spec references in a docs-only change.
 
 ## Procedure
 1. Run `openspec validate <change>` BEFORE proposing to archive; fix every ERROR until clean (INFO lines are cosmetic).
+1a. Delta section headers MUST be h2 — `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, `## RENAMED Requirements` — directly under `## Spec Delta`/`## Purpose`. An h3 level (`### MODIFIED Requirements`) is ignored by the validator and fails with "No delta sections found. Add headers such as..." (measured 2026-10-25, gh-116; cost a fix round). A h2 `## Purpose` before the delta sections is fine.
 2. For each MODIFIED requirement: open the current spec (openspec/specs/<capability>/spec.md) and copy EVERY existing #### Scenario block verbatim into the change's delta block — a MODIFIED replaces the whole requirement on archive, so any missing scenario reads as dropped and the archive aborts.
 3. NEVER rename an existing scenario inside a delta — renaming = dropping. Add new scenarios alongside the originals; update their WHEN/THEN text if the behavior changed.
 4. Copy inherited scenarios with their original script names only if still true; if a referenced script was renamed by another change landing in the same archive pass, fix the name in the copied text (precedent: kg_build.py → kg.py build).
