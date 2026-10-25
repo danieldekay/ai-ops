@@ -23,6 +23,8 @@ AIOPS="${AIOPS_DIR:-$HOME/coding/ai-ops}"
 MANIFEST="${APM_MANIFEST:-$HOME/.apm/apm.yml}"
 INSTALLED="${INSTALLED_SKILLS:-$HOME/.agents/skills}"
 LOG_DIR="${APM_PUBLISH_LOG_DIR:-/tmp/apm-publish}"
+LINT_CMD="${SKILL_LINT_CMD:-npx markdownlint-cli2}"   # override freely; --fix pass runs first when LINT_AUTOFIX=1
+LINT_AUTOFIX=1                                      # 0 = lint only, never rewrite
 LOCK="$LOG_DIR/running.pid"
 
 MODE=publish      # publish | verify | status
@@ -99,6 +101,40 @@ if [ "$MODE" = verify ]; then
   verify_skills "${SKILLS[@]}"; exit $?
 fi
 
+# ---------- lint + autofix ----------
+lint_skills() {
+  local s rc=0 out
+  for s in "$@"; do
+    # frontmatter sanity: a skill without name/description never surfaces in
+    # Pi's index (description is the only indexed field)
+    if ! head -30 "skills/$s/SKILL.md" | grep -q '^description:'; then
+      echo "LINT FAIL: skills/$s/SKILL.md has no 'description:' frontmatter" >&2
+      rc=1
+    fi
+    if [ "${LINT_AUTOFIX}" = 1 ]; then
+      out=$($LINT_CMD --fix "skills/$s/**/*.md" 2>&1)
+    else
+      out=$($LINT_CMD "skills/$s/**/*.md" 2>&1)
+    fi
+    if [ -n "$out" ]; then
+      echo "LINT ($s):"
+      printf '%s\n' "$out" | head -20
+    fi
+    if [ "$LINT_AUTOFIX" = 1 ]; then
+      # re-lint without fix: anything left is unfixable and must stop the publish
+      if ! out=$($LINT_CMD "skills/$s/**/*.md" 2>&1); then
+        echo "LINT FAIL ($s): unfixable markdownlint issues remain — fix by hand, then rerun" >&2
+        rc=1
+      elif [ -n "$(git status --porcelain -- "skills/$s")" ]; then
+        echo "LINT FIXED: $s (autofix rewrote files; they will be included in the commit)"
+      fi
+    elif ! $LINT_CMD "skills/$s/**/*.md" >/dev/null 2>&1; then
+      echo "LINT FAIL ($s)" >&2; rc=1
+    fi
+  done
+  return $rc
+}
+
 # ---------- publish mode ----------
 cd "$AIOPS" || { echo "cannot cd $AIOPS" >&2; exit 2; }
 
@@ -116,6 +152,13 @@ if [ "$DRY" = 1 ]; then
   echo "DRY RUN — would commit: ${to_publish[*]:-(nothing)}"
   for s in "${SKILLS[@]}"; do declare_check "$s" || true; done
   exit 0
+fi
+
+# lint everything being published (autofix runs BEFORE staging)
+if [ "${#to_publish[@]}" -gt 0 ] && command -v "$LINT_CMD" >/dev/null 2>&1; then
+  lint_skills "${to_publish[@]}" || { echo "lint gate failed — apm refresh NOT started" >&2; exit 1; }
+elif [ "${#to_publish[@]}" -gt 0 ]; then
+  echo "WARNING: $LINT_CMD not found — publishing without lint" >&2
 fi
 
 # single-flight guard: one bg apm job at a time (shared lockfile)
