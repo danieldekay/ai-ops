@@ -41,6 +41,22 @@ copy alone.
 
 ## Publish procedure (canonical → APM → installed)
 
+**One-command path (preferred):** after editing a skill in ai-ops, run
+
+```bash
+bash ~/coding/ai-ops/scripts/publish-skill.sh SKILL [SKILL...]
+```
+
+It stages exactly `skills/<name>`, commits, pushes, checks the global
+manifest declaration, then runs `apm update --global --yes` + `apm install
+-g --force` in the **background** (2–3 min) with content-based verification
+afterwards. Check the result with `publish-skill.sh --status` (or
+`--verify <name>` at any time). Flags: `--sync` (foreground), `--dry-run`,
+`--no-push`, `--declare` (auto-add missing manifest line), `-m "msg"`.
+The script encodes every rule below — use it instead of re-deriving steps.
+
+## Manual procedure (when the script is unavailable)
+
 1. Edit the canonical file: `~/coding/ai-ops/skills/<name>/SKILL.md`.
 2. Stage exactly the paths you changed (never `git add -A` — ai-ops always
    holds unrelated work):
@@ -117,6 +133,11 @@ benign — APM stamps the installed frontmatter with the source package/repo,
 so the installed copy can differ from canonical in the `metadata` block alone.
 
 ## Pitfalls
+
+- **Just edited a skill? Run `publish-skill.sh <name>` — do not walk the
+  steps by hand.** The manual procedure below is the fallback, not the
+  default. Hand-walking is where drift incidents come from (measured:
+  2026-10-21 six-skill patch incident; 2026-10-24 silent undeclared deploy).
 
 - **`apm --skill <NAME>` filtering is broken with mixed manifests.** With a
   manifest that mixes skills and other asset types, the `--skill` filter can
