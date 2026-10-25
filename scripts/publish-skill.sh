@@ -22,7 +22,7 @@ set -u
 AIOPS="${AIOPS_DIR:-$HOME/coding/ai-ops}"
 MANIFEST="${APM_MANIFEST:-$HOME/.apm/apm.yml}"
 INSTALLED="${INSTALLED_SKILLS:-$HOME/.agents/skills}"
-LOG_DIR="${APM_PUBLISH_LOG_DIR:-/tmp/apm-publish}"
+LOG_DIR="${APM_PUBLISH_LOG_DIR:-$HOME/.apm/publish-logs}"   # dated logs + latest status live under ~/.apm, survive /tmp cleanup
 LINT_CMD="${SKILL_LINT_CMD:-npx markdownlint-cli2}"   # override freely; --fix pass runs first when LINT_AUTOFIX=1
 LINT_AUTOFIX=1                                      # 0 = lint only, never rewrite
 LOCK="$LOG_DIR/running.pid"
@@ -47,11 +47,15 @@ done
 
 mkdir -p "$LOG_DIR"
 
-# ---------- --status: report last bg job ----------
+# ---------- --status: report last bg job (never blocks) ----------
 if [ "$MODE" = status ]; then
+  if [ -f "$LOG_DIR/latest" ]; then
+    cat "$LOG_DIR/latest"
+    exit 0
+  fi
   last=$(ls -t "$LOG_DIR"/job-*.log 2>/dev/null | head -1)
   [ -n "$last" ] || { echo "no background publish jobs yet"; exit 0; }
-  echo "== $last =="
+  echo "== $last (no status summary yet — job may still be running) =="
   tail -20 "$last"
   grep -q "PUBLISH RESULT: OK" "$last" && echo "RESULT: OK" || echo "RESULT: check log above"
   exit 0
@@ -218,8 +222,17 @@ echo "$$" > "$LOCK"
   run_refresh
   rc=$?
   echo "PUBLISH EXIT: $rc"
+  # durable handoff status — a later session reads this instead of the full log
+  {
+    echo "time: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "skills: $skill_list"
+    echo "result: $( [ "$rc" -eq 0 ] && echo OK || echo FAIL )"
+    echo "exit: $rc"
+    echo "log: $log"
+    grep -E '^(OK|DIFF|MISSING|installed-count):' "$log" 2>/dev/null
+  } > "$LOG_DIR/latest"
   rm -f "$LOCK"
 ) >> "$log" 2>&1 &
 
 echo "BG JOB STARTED: $log"
-echo "check with:  publish-skill.sh --status"
+echo "check later:  publish-skill.sh --status    (reads ~/.apm/publish-logs/latest, never blocks)"
