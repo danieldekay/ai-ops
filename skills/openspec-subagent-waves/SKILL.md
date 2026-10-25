@@ -82,6 +82,15 @@ git; children own scoped edits and gates.
 - **Fixtures after baselines, always.** Fixture events created for DOM
   assertions must not appear in refreshed pixel baselines; prefix fixtures
   (qa-etvl-) and record their IDs for cleanup.
+- **Orphaned required file after a shared-index race (2nd offense,
+  2026-10-25 tmd_theme gh-114).** Commit 786982e6 landed the require_once
+  line for inc/placeholders.php while the shared-index race silently
+  unstaged the file itself — a clean checkout would fatal (same class as
+  the 782c70cd local-media.php rescue). Rule: after ANY foreign commit
+  lands mid-commit-work, re-verify the FULL required-file set is tracked
+  before declaring done — for every new require_once/import target in the
+  committed tree run `git ls-files <path>` and confirm it resolves; an
+  untracked-but-required file is a rescue commit, not a note.
 - **Contract blocks specify behavior invariants, not internal mechanisms.**
   The tmd_theme archive-browse-parity contract said "any filter param forces
   page 1 server-side" — a mechanism that broke /page/N/ deep links AND the
