@@ -147,6 +147,15 @@ Two hardened rules (2026-10-22, repeat warden corrections):
   output or impressions; read the change dirs/files and verify every factual
   statement in the brief. Wrong brief facts cost a supervisor round-trip or a
   blocked child.
+- **Probe/leak claims need raw output in the artifact, and a parent re-probe
+  when load-bearing (2026-10-25, tmd_theme gh-124/gh-141).** A lane verdict
+  resting on an observed surface (REST response, probe, render output) must
+  paste the raw command + output into its artifact — a paraphrase like "probe
+  shows X is present" is not evidence and can be wrong (one lane recorded a
+  refuted REST excerpt leak as fact). When sibling lanes' verdicts conflict on
+  a shared surface, the parent runs its own probe BEFORE accepting either; a
+  paraphrased claim contradicted by another lane is adjudicated by fresh raw
+  output only.
 
 ## Memory routing
 
