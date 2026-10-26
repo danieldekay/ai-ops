@@ -40,6 +40,8 @@ ai-ops/
 | [context-efficiency](skills/context-efficiency/) | Token-efficient context hygiene for AI sessions |
 | [context-map](skills/context-map/) | Generate a relevant-file map before making changes |
 | [copilot-control-plane-architecture](skills/copilot-control-plane-architecture/) | GitHub Copilot architecture guidance |
+| [dotenv-credential-safety](skills/dotenv-credential-safety/) | Safe handling of .env files, API keys, tokens, and other secrets in agent sessions |
+| [improve-skill-instructions](skills/improve-skill-instructions/) | Fix skill instructions that conflict with observed behavior or tooling, with ownership-aware overlay policy |
 | [data-navigator](skills/navigator-data/) | Routes to data analysis and scientific computing skills |
 | [deep-research](skills/deep-research/) | Comprehensive multi-source research with synthesis |
 | [devops-navigator](skills/navigator-devops/) | Routes to DevOps, security, and infrastructure skills |
@@ -48,12 +50,14 @@ ai-ops/
 | [frontend-navigator](skills/navigator-frontend/) | Routes to frontend, UI, and design system skills |
 | [information-architecture](skills/information-architecture/) | IA design for clarity and discoverability |
 | [lean-ctx-subagent](skills/lean-ctx-subagent/) | Dispatch subagents via lean-ctx coordination tools |
+| [lean-ctx-routing-overlay](skills/lean-ctx-routing-overlay/) | Overlay for lean-ctx: fallback routing when native file search/read tools are denied |
 | [llm-wiki](skills/llm-wiki/) | Maintain an LLM-queryable project wiki |
 | [project-planning](skills/project-planning/) | Project planning and task decomposition |
 | [raindrop](skills/raindrop/) | Save and retrieve bookmarks via Raindrop.io |
 | [refactor-plan](skills/refactor-plan/) | Plan multi-file refactors with impact analysis before coding |
 | [research-navigator](skills/navigator-research/) | Routes to research and information-gathering skills |
 | [skill-management](skills/skill-management/) | Manage AI agent skills across harnesses using APM |
+| [solution-report](skills/solution-report/) | Write a structured best-practice report after solving a non-trivial problem, filed for long-term memory |
 | [testing-navigator](skills/navigator-testing/) | Routes to testing and quality assurance skills |
 | [thinking-frameworks](skills/thinking-frameworks/) | Structured thinking patterns for agent self-reflection |
 | [thinking-navigator](skills/navigator-thinking/) | Routes to reasoning and analytical thinking skills |
