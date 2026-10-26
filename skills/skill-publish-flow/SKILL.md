@@ -157,6 +157,8 @@ so the installed copy can differ from canonical in the `metadata` block alone.
   unmergeable, and silently destroyed by the next install. It also means
   "uncommitted work" never appears in `git status` — only `diff` against
   canonical reveals it.
+- **`apm update --global --yes` can time out mid-flight — run it alone, with a ≥300 s timeout.** Observed 2026-10-25: an update combined with install in one step timed out; an install run afterwards deployed the stale lockfile. A timed-out update may leave the lockfile behind the pushed state, so always re-run `apm update --global --yes` (alone) before the install — never `install --force` as recovery.
+- **`apm install -g --force` takes no path argument.** Passing a partial repo-relative path (`coding/ai-ops/skills/<name>`) fails validation with "not accessible or doesn't exist — run with --verbose for auth details" regardless of `--force` (measured 2026-10-25). Run the manifest-wide `apm install -g --force` from any cwd, then verify the specific directory with `diff -q`.
 - **Drift incident 2026-10-21 (cautionary case):** six skills were patched
   directly in the installed layer; three ai-ops-owned skills carried the
   patches in canonical and three did not (one new own skill, two third-party
