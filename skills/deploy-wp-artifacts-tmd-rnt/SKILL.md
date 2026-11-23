@@ -3,7 +3,7 @@ name: "deploy-wp-artifacts-tmd-rnt"
 description: "Deploy TMD and RNT WordPress themes/plugins to G12 production (or local) via the TMD release-toolkit deploy scripts and the RNT Ansible artifact playbook. Use for dry-runs, real deploys, and verification of tmd_core, tmd4, rnt_theme, rnt_core."
 version: 1
 created: "2026-09-12"
-updated: "2026-09-12"
+updated: "2026-11-23"
 ---
 ## When to Use
 Use when deploying or validating deployment of any of the four WordPress consumer repos: tmd_core (plugin), tmd4 (theme) via the shared TMD toolkit deploy scripts, or rnt_core (plugin), rnt_theme (theme) via the Ansible artifact playbook. Trigger words: deploy, dry-run, release to production, push artifact to G12, verify deployment. Always dry-run/ansible --check first; only real-deploy after explicit user approval.
@@ -21,9 +21,14 @@ Use when deploying or validating deployment of any of the four WordPress consume
 - AUTH: run-ansible.sh is the ONLY playbook entry point (sources Keychain SA token ansible-op-svc-token). Raw `uv run ansible-playbook` fails the vault password script (get-vault-password.sh needs personal op session or sourced token). Validate SA first: `source scripts/load-op-token.sh && op read 'op://Infrastructure/KEY Ansible - vault-encryption/password' >/dev/null && echo SA_READ_OK`. op whoami is NOT proof of auth. Personal `op signin` does not persist across shell invocations.
 - TMD dry-run intentionally stops BEFORE container activation — it does not prove the docker cp/swap/activation works. Only a real deploy does.
 - TMD consumers still pin the OLD shared toolkit via TMD_RELEASE_TOOLKIT_ROOT defaulting to ~/coding/tmd-release-toolkit (the generalized wp-release-toolkit at ~/Dokumente/projects/programmieren/wp-release-toolkit exists but consumers are NOT migrated to WP_RELEASE_TOOLKIT_ROOT yet).
+- The shared TMD toolkit (~/coding/tmd-release-toolkit) is NOW under git (branch main): commit c1c7609 = as-is baseline, commit 7ac86fa = determinism fixes.
+- Shared-toolkit release.sh run/plan REQUIRE version vX.Y.Z or X.Y.Z (regex-validated at arg-parse, before any repo or state-file touch); invalid versions exit 1.
+- Shared-toolkit lib/release_common.sh enforces the back-merge invariant: releases abort when local main has commits not in develop (develop..main count > 0).
+- tmd_theme/scripts/release.sh is RETIRED: it is now a fail-fast guidance entrypoint — it prints the real paths (npm run release:check, npm run release:manifest, .github/workflows/deploy-tmd-next-staging.yml) then exit 1. tmd-next has NO local release orchestrator.
 - deploy scripts may prompt to commit dirty changes (answer n to continue dirty; git archive uses the ref so dirtiness does not affect package content).
 - RNT deploy-auto.sh in rnt_theme/rnt_core is LEGACY (netcup-webserver-shared git-pull, interactive, no dry-run, no auto mode). Production was cut over to the G12 Ansible artifact playbook — do not use deploy-auto.sh for production.
-- TMD_RELEASE_AUTO / RNT_RELEASE_AUTO: RNT release.sh honors RNT_RELEASE_AUTO=true + --dry-run; TMD release.sh defines TMD_RELEASE_AUTO but it is never consumed (release still prompts).
+- TMD_RELEASE_AUTO / RNT_RELEASE_AUTO: RNT release.sh honors RNT_RELEASE_AUTO=true + --dry-run; the TMD shared toolkit has NO auto mode — TMD_RELEASE_AUTO does not exist in its code (verified 2026-11-23), its release.sh still prompts.
+- wp-release-toolkit (~/Dokumente/projects/programmieren/wp-release-toolkit, branch fix/remote-tag-force-guard @ 858eca5): deleting an EXISTING remote tag with --force now requires explicit consent — WP_RELEASE_FORCE_REMOTE_TAG=1 non-interactively, or interactive y/N; a failed remote delete aborts instead of being swallowed.
 - Never export/print secrets (tokens, vault password). Never ask the user for passwords — service account is read-only and suffices for deploys.
 - Real deploys are state-changing: modify wp-content on prod and activate plugins/themes. Always dry-run/--check first and get explicit user approval before a real deploy; rely on .prev backups (TMD) / wp-cli transactional install (RNT) for rollback.
 
