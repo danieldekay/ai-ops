@@ -229,13 +229,18 @@ Routes to frontend skills in the `frontend` long-tail category.
 | `svelte5-best-practices` | Runes, snippets, SvelteKit, Svelte 4→5 migration |
 | `svelte-components` | Writing Svelte 5 components with runes and shadcn-svelte |
 
-#### Stitch (Google Labs design tool)
+#### Stitch (Google Labs design tool) — installed via `apm install -g google-labs-code/stitch-skills/plugins/stitch-design/#<sha>`
 
 | Skill | Use When |
 |-------|----------|
-| `stitch-design` | Unified entry for Stitch: prompt enhancement + screen generation |
-| `generate-design` | Generate/edit screens with Stitch MCP |
+| `generate-design` | Generate/edit screens with Stitch MCP (prompt enhancement pipeline included) |
+| `code-to-design` | Turn running frontend code into Stitch designs |
 | `extract-design-md` | Reverse-engineer design system from frontend source |
+| `extract-static-html` | Extract static HTML from Stitch screens |
+| `manage-design-system` | Manage Stitch design system tokens |
+| `upload-to-stitch` | Upload designs/assets to Stitch |
+
+Note (2026-10): the old catalog's single `stitch-design` skill does not exist upstream. Installed the whole `plugins/stitch-design/` package, pinned by SHA in `~/.apm/apm.yml`.
 
 Quick Decision:
 
@@ -243,7 +248,7 @@ Quick Decision:
 - React + shadcn project → `shadcn` + `tailwind-v4-shadcn`
 - Svelte project → `svelte5-best-practices`
 - Design system work → `design-tokens` + `design-system-patterns`
-- Stitch design tool → `stitch-design`
+- Stitch design tool → `generate-design`
 
 ### Data
 

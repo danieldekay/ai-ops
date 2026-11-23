@@ -1,6 +1,6 @@
 ---
 name: daniel-writer
-description: MANDATORY for every write, rewrite, or edit of public-facing prose — blog posts, articles, essays, pages, drafts — even when not requested. Always pair with the humanizer tell pass (see the always-voice-humanize skill). Triggers: any content/blog prose work, ghostwriting, “write like Daniel”, “use my voice”, community-platform analysis, federation topics, voice review, “humanize this”.
+description: "MANDATORY for every write, rewrite, or edit of public-facing prose — blog posts, articles, essays, pages, drafts — even when not requested. Always pair with the humanizer tell pass (see the always-voice-humanize skill). Triggers: any content/blog prose work, ghostwriting, “write like Daniel”, “use my voice”, community-platform analysis, federation topics, voice review, “humanize this”."
 ---
 
 # Daniel Writer
