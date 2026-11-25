@@ -66,6 +66,16 @@ assertion is not a RED check.
 - Mock at the right level: learn every side effect of the real method before
   replacing it; mock the slow or external operation and keep what the test
   depends on real. When unsure, run the test against the real dependency.
+- **Model the serialization layer, not the source value.** When JS gates on
+  data produced by PHP (`wp_localize_script`, REST payloads, data
+  attributes), at least one mock must use the SERIALIZED shape.
+  `wp_localize_script` stringifies top-level booleans (`true` → `"1"`), so a
+  Jest mock with `flag: true` passes while production fails a strict
+  `=== true` fail-closed check (validated live 2026-11-25, tmd_core#173:
+  admin lost all privileged dashboard shortcuts). Prefer flags inside a
+  nested object — nested array values are JSON-encoded verbatim — AND mock
+  that nested shape; keep one truthy-but-non-boolean (`"1"`, `"yes"`)
+  fail-closed test.
 - **Stub shapes come from the provider's source, never from the consumer's
   code.** Before stubbing any RPC/event payload, read the emitting function's
   `return { ... }` in the provider's source and copy the shape verbatim. A
